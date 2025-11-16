@@ -641,6 +641,177 @@ curl -X POST http://localhost:3001/api/orders/ORDER_ID/complete \
 
 ---
 
+## Payments (Stripe Test Mode)
+
+### Environment Setup
+Make sure you have Stripe test credentials in your `.env` file:
+```bash
+STRIPE_SECRET_KEY=sk_test_51DummyTestKeyForDevelopment123456789
+STRIPE_PUBLISHABLE_KEY=pk_test_51DummyTestKeyForDevelopment123456789
+STRIPE_WEBHOOK_SECRET=whsec_DummyWebhookSecretForDevelopment123
+STRIPE_MODE=test
+```
+
+**Note:** These are dummy keys for testing. Replace with your own Stripe test keys from https://dashboard.stripe.com/test/apikeys
+
+### Create Payment Intent
+```bash
+# After creating an order, create a payment intent
+curl -X POST http://localhost:3001/api/payments/create-payment-intent \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderId": "ORDER_ID"
+  }'
+```
+
+**Response:**
+```json
+{
+  "paymentIntentId": "pi_...",
+  "clientSecret": "pi_..._secret_...",
+  "amount": 150.00,
+  "currency": "EUR",
+  "status": "requires_payment_method"
+}
+```
+
+### Get Payment Status
+```bash
+curl http://localhost:3001/api/payments/order/ORDER_ID/status \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "orderId": "order-uuid",
+  "paymentStatus": "PROCESSING",
+  "amount": 150.00,
+  "currency": "EUR",
+  "stripeStatus": "requires_payment_method",
+  "paymentIntentId": "pi_..."
+}
+```
+
+### Simulate Test Payment (Development Only)
+For easy testing, you can use the test payment endpoint that auto-confirms payment:
+
+```bash
+curl -X POST http://localhost:3001/api/payments/test-payment/ORDER_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Test payment successful",
+  "paymentIntentId": "pi_...",
+  "orderId": "order-uuid"
+}
+```
+
+This automatically:
+- Creates a payment intent
+- Confirms payment with test card
+- Updates order to CONFIRMED status
+- Sets payment status to SUCCEEDED
+
+### Stripe Webhook Testing
+
+The webhook endpoint is available at: `http://localhost:3001/api/payments/webhook`
+
+To test webhooks locally with Stripe CLI:
+
+```bash
+# Install Stripe CLI (one-time)
+# https://stripe.com/docs/stripe-cli
+
+# Login to Stripe
+stripe login
+
+# Forward webhooks to local server
+stripe listen --forward-to localhost:3001/api/payments/webhook
+
+# Trigger test events
+stripe trigger payment_intent.succeeded
+stripe trigger payment_intent.payment_failed
+stripe trigger charge.refunded
+```
+
+### Payment Workflow Example
+
+Complete order with payment flow:
+
+```bash
+# 1. Client creates order
+curl -X POST http://localhost:3001/api/orders/service/service-1 \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"requirements": {"document": "contract.pdf"}, "notes": "Urgent"}'
+
+# 2. Advisor confirms order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/confirm \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 3. Client simulates test payment (easiest for development)
+curl -X POST http://localhost:3001/api/payments/test-payment/ORDER_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+
+# OR create real payment intent (for production-like testing)
+curl -X POST http://localhost:3001/api/payments/create-payment-intent \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"orderId": "ORDER_ID"}'
+
+# 4. Check payment status
+curl http://localhost:3001/api/payments/order/ORDER_ID/status \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+
+# 5. Advisor starts work (after payment confirmed)
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/start \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 6. Continue with order workflow...
+```
+
+### Stripe Test Cards
+
+When using real payment intents (not test-payment endpoint), use these test cards:
+
+**Success:**
+- Card: `4242 4242 4242 4242`
+- Expiry: Any future date
+- CVC: Any 3 digits
+- ZIP: Any 5 digits
+
+**Decline:**
+- Card: `4000 0000 0000 0002`
+
+**Requires Authentication:**
+- Card: `4000 0027 6000 3184`
+
+More test cards: https://stripe.com/docs/testing
+
+### Payment Statuses
+
+**Order Payment Status:**
+- `PENDING` - No payment initiated
+- `PROCESSING` - Payment intent created
+- `SUCCEEDED` - Payment confirmed
+- `FAILED` - Payment failed
+- `REFUNDED` - Payment refunded
+
+**Stripe Payment Intent Status:**
+- `requires_payment_method` - Waiting for payment method
+- `requires_confirmation` - Needs confirmation
+- `processing` - Being processed
+- `succeeded` - Payment succeeded
+- `canceled` - Payment canceled
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -694,10 +865,17 @@ npm run prisma:seed
 - Complete order lifecycle (PENDING → COMPLETED)
 - Revision system
 
+✅ **Phase 1 Month 2 Week 6**:
+- Stripe payment integration (test mode)
+- Payment intent creation and confirmation
+- Webhook handling for payment events
+- Test payment simulation for development
+- Payment status tracking
+- Support for test cards and Stripe CLI
+
 ## Next Steps
 
 **Phase 1 Month 2** (Remaining):
-- Week 6: Payment integration with Stripe
 - Week 7: Messaging & real-time communication
 - Week 8: Reviews & ratings system
 

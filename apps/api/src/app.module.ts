@@ -10,6 +10,7 @@ import { QuestionsModule } from './modules/questions/questions.module';
 import { AnswersModule } from './modules/answers/answers.module';
 import { ServicesModule } from './modules/services/services.module';
 import { OrdersModule } from './modules/orders/orders.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -32,6 +33,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AnswersModule,
     ServicesModule,
     OrdersModule,
+    PaymentsModule,
   ],
   providers: [
     {
