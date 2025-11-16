@@ -11,6 +11,7 @@ import { AnswersModule } from './modules/answers/answers.module';
 import { ServicesModule } from './modules/services/services.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { PaymentsModule } from './modules/payments/payments.module';
+import { MessagingModule } from './modules/messaging/messaging.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -34,6 +35,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     ServicesModule,
     OrdersModule,
     PaymentsModule,
+    MessagingModule,
   ],
   providers: [
     {

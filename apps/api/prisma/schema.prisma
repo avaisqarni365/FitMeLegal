@@ -26,11 +26,14 @@ model User {
   updatedAt     DateTime  @updatedAt @map("updated_at")
   deletedAt     DateTime? @map("deleted_at")
 
-  advisor   Advisor?
-  questions Question[]
-  answers   Answer[]
-  reviews   Review[]
-  orders    Order[]
+  advisor              Advisor?
+  questions            Question[]
+  answers              Answer[]
+  reviews              Review[]
+  orders               Order[]
+  conversationsStarted Conversation[] @relation("ConversationInitiator")
+  conversationsReceived Conversation[] @relation("ConversationReceiver")
+  messages             Message[]
 
   @@index([email])
   @@index([role])
@@ -204,6 +207,48 @@ model Order {
   @@index([status])
   @@index([createdAt(sort: Desc)])
   @@map("orders")
+}
+
+model Conversation {
+  id               String   @id @default(uuid())
+  initiatorId      String   @map("initiator_id")
+  initiator        User     @relation("ConversationInitiator", fields: [initiatorId], references: [id], onDelete: Cascade)
+  receiverId       String   @map("receiver_id")
+  receiver         User     @relation("ConversationReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+  orderId          String?  @map("order_id") // Optional: conversation related to an order
+  subject          String?
+  lastMessageAt    DateTime? @map("last_message_at")
+  initiatorUnread  Int      @default(0) @map("initiator_unread")
+  receiverUnread   Int      @default(0) @map("receiver_unread")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  messages Message[]
+
+  @@unique([initiatorId, receiverId, orderId])
+  @@index([initiatorId])
+  @@index([receiverId])
+  @@index([orderId])
+  @@index([lastMessageAt(sort: Desc)])
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(uuid())
+  conversationId String       @map("conversation_id")
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId       String       @map("sender_id")
+  sender         User         @relation(fields: [senderId], references: [id], onDelete: Cascade)
+  content        String       @db.Text
+  attachments    Json         @default("[]")
+  readAt         DateTime?    @map("read_at")
+  createdAt      DateTime     @default(now()) @map("created_at")
+  updatedAt      DateTime     @updatedAt @map("updated_at")
+
+  @@index([conversationId])
+  @@index([senderId])
+  @@index([createdAt(sort: Desc)])
+  @@map("messages")
 }
 
 // Enums

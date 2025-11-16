@@ -812,6 +812,307 @@ More test cards: https://stripe.com/docs/testing
 
 ---
 
+## Messaging & Real-time Communication
+
+### Start a New Conversation
+```bash
+# Start a conversation with another user
+curl -X POST http://localhost:3001/api/messaging/conversations \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receiverId": "RECEIVER_USER_ID",
+    "subject": "Question about contract review service",
+    "initialMessage": "Hi, I have a question about your contract review service. Can you help me?"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "conversation-uuid",
+  "initiatorId": "your-user-id",
+  "receiverId": "receiver-user-id",
+  "subject": "Question about contract review service",
+  "lastMessageAt": "2024-11-16T10:30:00.000Z",
+  "initiatorUnread": 0,
+  "receiverUnread": 1,
+  "initiator": {
+    "id": "your-user-id",
+    "firstName": "John",
+    "lastName": "Doe",
+    "email": "john@example.com",
+    "avatarUrl": null
+  },
+  "receiver": {
+    "id": "receiver-user-id",
+    "firstName": "Michael",
+    "lastName": "Johnson",
+    "email": "michael.lawyer@example.com",
+    "avatarUrl": null
+  },
+  "messages": [
+    {
+      "id": "message-uuid",
+      "content": "Hi, I have a question...",
+      "createdAt": "2024-11-16T10:30:00.000Z"
+    }
+  ]
+}
+```
+
+**Optional:** Link conversation to an order:
+```bash
+curl -X POST http://localhost:3001/api/messaging/conversations \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receiverId": "ADVISOR_USER_ID",
+    "orderId": "ORDER_ID",
+    "subject": "Question about my order",
+    "initialMessage": "I have a question about the deliverables for my order."
+  }'
+```
+
+### Get All My Conversations
+```bash
+# Get all conversations
+curl http://localhost:3001/api/messaging/conversations \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# Get only conversations with unread messages
+curl "http://localhost:3001/api/messaging/conversations?unreadOnly=true" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# With pagination
+curl "http://localhost:3001/api/messaging/conversations?page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "conversation-uuid",
+      "otherUser": {
+        "id": "user-id",
+        "firstName": "Michael",
+        "lastName": "Johnson",
+        "email": "michael.lawyer@example.com",
+        "role": "ADVISOR"
+      },
+      "subject": "Question about contract review",
+      "lastMessageAt": "2024-11-16T10:30:00.000Z",
+      "unreadCount": 2,
+      "messages": [
+        {
+          "id": "message-uuid",
+          "content": "Last message preview...",
+          "createdAt": "2024-11-16T10:30:00.000Z"
+        }
+      ]
+    }
+  ],
+  "meta": {
+    "total": 5,
+    "page": 1,
+    "limit": 20,
+    "totalPages": 1
+  }
+}
+```
+
+### Get Conversation Details
+```bash
+curl http://localhost:3001/api/messaging/conversations/CONVERSATION_ID \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Get Messages in a Conversation
+```bash
+# Get latest 50 messages (default)
+curl http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# With pagination
+curl "http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages?page=1&limit=20" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "message-uuid-1",
+      "conversationId": "conversation-uuid",
+      "senderId": "user-id-1",
+      "content": "Hi, I have a question...",
+      "attachments": [],
+      "readAt": "2024-11-16T10:35:00.000Z",
+      "createdAt": "2024-11-16T10:30:00.000Z",
+      "sender": {
+        "id": "user-id-1",
+        "firstName": "John",
+        "lastName": "Doe",
+        "avatarUrl": null
+      }
+    },
+    {
+      "id": "message-uuid-2",
+      "conversationId": "conversation-uuid",
+      "senderId": "user-id-2",
+      "content": "Yes, I can help you with that!",
+      "attachments": [],
+      "readAt": null,
+      "createdAt": "2024-11-16T10:32:00.000Z",
+      "sender": {
+        "id": "user-id-2",
+        "firstName": "Michael",
+        "lastName": "Johnson",
+        "avatarUrl": null
+      }
+    }
+  ],
+  "meta": {
+    "total": 2,
+    "page": 1,
+    "limit": 50,
+    "totalPages": 1
+  }
+}
+```
+
+### Send a Message
+```bash
+# Send a text message
+curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Thank you for your response! When can we schedule a call?"
+  }'
+
+# Send a message with attachments
+curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Here are the documents you requested.",
+    "attachments": ["https://example.com/document1.pdf", "https://example.com/document2.pdf"]
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "message-uuid",
+  "conversationId": "conversation-uuid",
+  "senderId": "your-user-id",
+  "content": "Thank you for your response!",
+  "attachments": [],
+  "readAt": null,
+  "createdAt": "2024-11-16T10:40:00.000Z",
+  "sender": {
+    "id": "your-user-id",
+    "firstName": "John",
+    "lastName": "Doe",
+    "avatarUrl": null
+  }
+}
+```
+
+### Mark Conversation as Read
+```bash
+curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/mark-read \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Marked as read"
+}
+```
+
+This will:
+- Mark all unread messages in the conversation as read
+- Reset your unread count for this conversation to 0
+- Update the `readAt` timestamp on all messages you haven't read
+
+### Get Unread Message Count
+```bash
+curl http://localhost:3001/api/messaging/unread-count \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "unreadCount": 5
+}
+```
+
+---
+
+## Messaging Workflow Example
+
+Complete messaging flow between client and advisor:
+
+```bash
+# 1. Client starts conversation with advisor
+curl -X POST http://localhost:3001/api/messaging/conversations \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "receiverId": "ADVISOR_USER_ID",
+    "subject": "Question about your service",
+    "initialMessage": "Hi, can you help me with a contract review?"
+  }'
+# Save the conversation ID from response
+
+# 2. Advisor checks unread count
+curl http://localhost:3001/api/messaging/unread-count \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 3. Advisor gets all conversations
+curl http://localhost:3001/api/messaging/conversations \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 4. Advisor gets messages in conversation
+curl http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 5. Advisor marks conversation as read
+curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/mark-read \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 6. Advisor sends reply
+curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Yes, I can help you! I specialize in contract reviews. Please share the contract."
+  }'
+
+# 7. Client gets updated conversation
+curl http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+
+# 8. Client replies with attachment
+curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/messages \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Here is my employment contract. Please review it.",
+    "attachments": ["https://example.com/contract.pdf"]
+  }'
+```
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -873,10 +1174,18 @@ npm run prisma:seed
 - Payment status tracking
 - Support for test cards and Stripe CLI
 
+✅ **Phase 1 Month 2 Week 7**:
+- Direct messaging between users (client ↔ advisor)
+- Conversation management with unread tracking
+- Message history with pagination
+- Unread message counters
+- Mark conversations as read
+- Optional conversation-order linking
+- Attachment support for messages
+
 ## Next Steps
 
 **Phase 1 Month 2** (Remaining):
-- Week 7: Messaging & real-time communication
 - Week 8: Reviews & ratings system
 
 **Future Features:**
