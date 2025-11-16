@@ -35,7 +35,6 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SearchModule } from './modules/search/search.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
-import { EnhancedThrottlerGuard } from './common/guards/throttler.guard';
 
 @Module({
   imports: [
@@ -96,8 +95,7 @@ import { EnhancedThrottlerGuard } from './common/guards/throttler.guard';
     },
     {
       provide: APP_GUARD,
-      useFactory: (logger: LoggerService) => new EnhancedThrottlerGuard(logger),
-      inject: [LoggerService],
+      useClass: ThrottlerGuard,
     },
     {
       provide: APP_FILTER,

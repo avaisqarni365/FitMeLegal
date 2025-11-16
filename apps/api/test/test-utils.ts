@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { PrismaService } from '../src/prisma/prisma.service';
-import * as request from 'supertest';
+import request from 'supertest';
 import * as bcrypt from 'bcrypt';
 
 /**
@@ -253,7 +253,7 @@ export class TestApiClient {
   }
 
   get(url: string) {
-    const req = request(app.getHttpServer()).get(url);
+    const req = request(this.app.getHttpServer()).get(url);
     if (this.token) {
       req.set('Authorization', this.token);
     }
@@ -261,7 +261,7 @@ export class TestApiClient {
   }
 
   post(url: string, body?: any) {
-    const req = request(app.getHttpServer()).post(url);
+    const req = request(this.app.getHttpServer()).post(url);
     if (this.token) {
       req.set('Authorization', this.token);
     }
@@ -272,7 +272,7 @@ export class TestApiClient {
   }
 
   patch(url: string, body?: any) {
-    const req = request(app.getHttpServer()).patch(url);
+    const req = request(this.app.getHttpServer()).patch(url);
     if (this.token) {
       req.set('Authorization', this.token);
     }
@@ -283,7 +283,7 @@ export class TestApiClient {
   }
 
   delete(url: string) {
-    const req = request(app.getHttpServer()).delete(url);
+    const req = request(this.app.getHttpServer()).delete(url);
     if (this.token) {
       req.set('Authorization', this.token);
     }

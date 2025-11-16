@@ -1,3 +1,5 @@
+import { Attachment } from './question';
+
 export enum AnswerStatus {
   PENDING = 'PENDING',
   ACCEPTED = 'ACCEPTED',
@@ -14,14 +16,6 @@ export interface Answer {
   attachments: Attachment[];
   createdAt: Date;
   updatedAt: Date;
-}
-
-export interface Attachment {
-  id: string;
-  name: string;
-  url: string;
-  mimeType: string;
-  size: number;
 }
 
 export interface CreateAnswerDto {
