@@ -1,5 +1,45 @@
 # API Testing Guide
 
+This guide covers both manual API testing and automated test suites.
+
+## Automated Testing
+
+The FitMeLegal API includes comprehensive automated tests using Jest.
+
+### Running Tests
+
+```bash
+# Run all unit tests
+cd apps/api
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+
+# Run E2E/integration tests
+npm run test:e2e
+
+# Run tests with coverage report
+npm run test:cov
+
+# Run specific test file
+npm test -- notifications.service.spec.ts
+```
+
+### Test Coverage
+
+- **Unit Tests**: Test individual services and components in isolation
+- **Integration Tests**: Test API endpoints end-to-end
+- **Coverage Target**: 70% code coverage across all modules
+
+See `apps/api/TESTING_GUIDE.md` for detailed information on writing and running tests.
+
+---
+
+## Manual API Testing
+
+This section provides curl examples for manually testing API endpoints.
+
 ## Setup
 
 ### 1. Start the API Server
