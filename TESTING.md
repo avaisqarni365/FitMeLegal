@@ -281,6 +281,112 @@ curl -X POST http://localhost:3001/api/advisors \
 
 ---
 
+### Questions & Answers
+
+#### Post a Question (Client Only)
+```bash
+# Login as client first
+curl -X POST http://localhost:3001/api/questions \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category": "LEGAL",
+    "subcategory": "employment",
+    "title": "Review employment contract",
+    "description": "I need help reviewing my employment contract before signing. Are there any red flags I should be aware of?",
+    "budget": 150.0,
+    "urgency": "NORMAL",
+    "language": "en"
+  }'
+```
+
+#### List All Questions (Public)
+```bash
+# Basic listing
+curl http://localhost:3001/api/questions
+
+# With filters
+curl "http://localhost:3001/api/questions?category=LEGAL&subcategory=corporate&status=OPEN&minBudget=100&maxBudget=500&page=1&limit=10"
+
+# Search
+curl "http://localhost:3001/api/questions?search=contract"
+```
+
+#### Get My Questions
+```bash
+curl http://localhost:3001/api/questions/my-questions \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+#### Get Question by ID (Public)
+```bash
+curl http://localhost:3001/api/questions/QUESTION_ID
+```
+
+#### Update My Question
+```bash
+curl -X PATCH http://localhost:3001/api/questions/QUESTION_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated title",
+    "budget": 200.0
+  }'
+```
+
+#### Delete My Question
+```bash
+curl -X DELETE http://localhost:3001/api/questions/QUESTION_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+#### Submit Answer to Question (Advisor Only)
+```bash
+# Login as advisor first
+curl -X POST http://localhost:3001/api/answers/question/QUESTION_ID \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Based on my review of your situation, here are the key points...",
+    "price": 150.0
+  }'
+```
+
+#### Get All Answers for a Question (Public)
+```bash
+curl http://localhost:3001/api/answers/question/QUESTION_ID
+```
+
+#### Get My Answers (Advisor Only)
+```bash
+curl http://localhost:3001/api/answers/my-answers \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+```
+
+#### Update My Answer (if still pending)
+```bash
+curl -X PATCH http://localhost:3001/api/answers/ANSWER_ID \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Updated answer content",
+    "price": 175.0
+  }'
+```
+
+#### Select Answer as Best (Question Owner Only)
+```bash
+curl -X POST http://localhost:3001/api/questions/QUESTION_ID/select-answer/ANSWER_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+This will:
+- Mark the selected answer as ACCEPTED
+- Mark other answers as REJECTED
+- Change question status to ANSWERED
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
