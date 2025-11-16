@@ -43,6 +43,7 @@ model User {
   documentTemplates    DocumentTemplate[]
   contractAnalyses     ContractAnalysis[]
   draftedDocuments     DraftedDocument[]
+  adminLogs            AuditLog[]
 
   @@index([email])
   @@index([role])
@@ -637,6 +638,28 @@ model DraftedDocument {
   @@map("drafted_documents")
 }
 
+model AuditLog {
+  id          String       @id @default(uuid())
+  adminId     String       @map("admin_id")
+  admin       User         @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  action      AdminAction  // APPROVE_ADVISOR, SUSPEND_USER, etc.
+  entityType  String?      @map("entity_type") // "User", "Advisor", "Service", etc.
+  entityId    String?      @map("entity_id") // ID of affected entity
+
+  details     Json?        @default("{}") // Additional details about the action
+  ipAddress   String?      @map("ip_address")
+  userAgent   String?      @map("user_agent")
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  @@index([adminId])
+  @@index([action])
+  @@index([entityType, entityId])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -774,4 +797,32 @@ enum DraftStatus {
   DRAFT
   REVIEWING
   FINALIZED
+}
+
+enum AdminAction {
+  // User management
+  SUSPEND_USER
+  UNSUSPEND_USER
+  DELETE_USER
+  UPDATE_USER_ROLE
+
+  // Advisor management
+  APPROVE_ADVISOR
+  REJECT_ADVISOR
+  VERIFY_ADVISOR
+  SUSPEND_ADVISOR
+
+  // Content moderation
+  DELETE_QUESTION
+  DELETE_ANSWER
+  DELETE_SERVICE
+  DELETE_REVIEW
+  DELETE_TEMPLATE
+
+  // Platform settings
+  UPDATE_SETTINGS
+  CREATE_ADMIN
+
+  // Other
+  OTHER
 }

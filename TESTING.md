@@ -2923,6 +2923,523 @@ curl -X POST http://localhost:3000/projects/proj_123/members \
 
 ---
 
+## Admin & Analytics (Phase 2 Weeks 23-24)
+
+The Admin & Analytics modules provide platform management capabilities and comprehensive analytics for administrators and users.
+
+### Admin Features
+
+Admin-only endpoints for platform management, user moderation, and advisor verification.
+
+**Note:** All admin endpoints require ADMIN role. Use an admin user's access token.
+
+#### Get All Users
+
+```bash
+# Get all users with pagination
+curl -X GET "http://localhost:3000/admin/users?page=1&limit=50" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Filter by role
+curl -X GET "http://localhost:3000/admin/users?role=ADVISOR" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Search users
+curl -X GET "http://localhost:3000/admin/users?search=john" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+{
+  "data": [
+    {
+      "id": "user_123",
+      "email": "john@example.com",
+      "role": "CLIENT",
+      "firstName": "John",
+      "lastName": "Doe",
+      "emailVerified": true,
+      "kycStatus": "VERIFIED",
+      "createdAt": "2025-01-15T10:00:00Z",
+      "deletedAt": null
+    }
+  ],
+  "pagination": {
+    "total": 1250,
+    "page": 1,
+    "limit": 50,
+    "totalPages": 25
+  }
+}
+```
+
+#### Get User Details
+
+```bash
+curl -X GET http://localhost:3000/admin/users/user_123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response includes full user profile, advisor details (if applicable), recent questions, orders, and subscriptions.
+
+#### Suspend User
+
+```bash
+curl -X POST http://localhost:3000/admin/users/user_123/suspend \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Violation of terms of service",
+    "details": "Posted inappropriate content in Q&A section"
+  }'
+```
+
+#### Unsuspend User
+
+```bash
+curl -X POST http://localhost:3000/admin/users/user_123/unsuspend \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### Delete User Permanently
+
+```bash
+curl -X DELETE http://localhost:3000/admin/users/user_123 \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+**Warning:** This is permanent and cannot be undone!
+
+#### Update User Role
+
+```bash
+curl -X PATCH http://localhost:3000/admin/users/user_123/role \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "role": "ADVISOR",
+    "reason": "User requested advisor status upgrade"
+  }'
+```
+
+#### Get Pending Advisors
+
+```bash
+curl -X GET http://localhost:3000/admin/advisors/pending \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+[
+  {
+    "id": "advisor_456",
+    "userId": "user_789",
+    "advisorType": "LAWYER",
+    "specializations": ["Contract Law", "Corporate Law"],
+    "licenseNumber": "BAR123456",
+    "barAssociation": "German Bar Association",
+    "yearsExperience": 8,
+    "verificationStatus": "PENDING",
+    "verificationDocuments": [
+      "https://storage.fitmelegal.com/docs/bar_certificate.pdf",
+      "https://storage.fitmelegal.com/docs/id.pdf"
+    ],
+    "createdAt": "2025-11-01T10:00:00Z",
+    "user": {
+      "id": "user_789",
+      "email": "jane.lawyer@example.com",
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "createdAt": "2025-11-01T09:00:00Z"
+    }
+  }
+]
+```
+
+#### Verify/Approve/Reject Advisor
+
+```bash
+# Approve advisor
+curl -X POST http://localhost:3000/admin/advisors/advisor_456/verify \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "APPROVE",
+    "notes": "All documents verified. Professional credentials confirmed."
+  }'
+
+# Reject advisor
+curl -X POST http://localhost:3000/admin/advisors/advisor_456/verify \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "REJECT",
+    "notes": "Insufficient documentation. License number could not be verified."
+  }'
+
+# Upgrade verification level
+curl -X POST http://localhost:3000/admin/advisors/advisor_456/verify \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "VERIFY",
+    "verificationLevel": "ENHANCED",
+    "notes": "Enhanced background check completed successfully."
+  }'
+```
+
+#### Get Audit Logs
+
+```bash
+# Get all audit logs
+curl -X GET "http://localhost:3000/admin/audit-logs?page=1&limit=50" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Filter by action
+curl -X GET "http://localhost:3000/admin/audit-logs?action=APPROVE_ADVISOR" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Filter by entity type
+curl -X GET "http://localhost:3000/admin/audit-logs?entityType=User" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+{
+  "data": [
+    {
+      "id": "log_123",
+      "adminId": "admin_user_id",
+      "action": "APPROVE_ADVISOR",
+      "entityType": "Advisor",
+      "entityId": "advisor_456",
+      "details": {
+        "notes": "All documents verified. Professional credentials confirmed."
+      },
+      "ipAddress": null,
+      "userAgent": null,
+      "createdAt": "2025-11-16T14:30:00Z",
+      "admin": {
+        "id": "admin_user_id",
+        "email": "admin@fitmelegal.com",
+        "firstName": "Admin",
+        "lastName": "User"
+      }
+    }
+  ],
+  "pagination": {
+    "total": 450,
+    "page": 1,
+    "limit": 50,
+    "totalPages": 9
+  }
+}
+```
+
+#### Get Platform Statistics
+
+```bash
+curl -X GET http://localhost:3000/admin/stats \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+{
+  "users": {
+    "total": 1250,
+    "advisors": 85,
+    "clients": 1165
+  },
+  "content": {
+    "questions": 3420,
+    "services": 145,
+    "orders": 892
+  },
+  "advisors": {
+    "total": 85,
+    "pending": 12,
+    "verified": 73
+  },
+  "subscriptions": {
+    "active": 320
+  },
+  "revenue": {
+    "total": 145280.50,
+    "currency": "EUR"
+  }
+}
+```
+
+---
+
+### Analytics Features
+
+Comprehensive analytics for platform insights and user performance tracking.
+
+#### Get Platform Analytics
+
+```bash
+# Get 30-day platform analytics
+curl -X GET "http://localhost:3000/analytics/platform?period=30d" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+
+# Other periods: 7d, 30d, 90d, 1y
+curl -X GET "http://localhost:3000/analytics/platform?period=90d" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+{
+  "period": "30d",
+  "dateRange": {
+    "from": "2025-10-17T00:00:00Z",
+    "to": "2025-11-16T00:00:00Z"
+  },
+  "users": {
+    "total": 1250,
+    "new": 145,
+    "growth": "11.60%"
+  },
+  "orders": {
+    "total": 234,
+    "completed": 198,
+    "revenue": 45820.00,
+    "averageOrderValue": "231.41"
+  },
+  "questions": {
+    "total": 456,
+    "answered": 389,
+    "answerRate": "85.31%"
+  },
+  "subscriptions": {
+    "active": 320,
+    "new": 42
+  },
+  "advisors": {
+    "total": 85,
+    "new": 8,
+    "verified": 73,
+    "verificationRate": "85.88%"
+  },
+  "services": {
+    "total": 145,
+    "active": 132
+  }
+}
+```
+
+#### Get My Analytics
+
+```bash
+# Any user can view their own analytics
+curl -X GET http://localhost:3000/analytics/user \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response (Client):
+```json
+{
+  "userId": "user_123",
+  "role": "CLIENT",
+  "memberSince": "2025-01-15T10:00:00Z",
+  "orders": {
+    "total": 12,
+    "completed": 10,
+    "spending": 2450.00
+  },
+  "questions": {
+    "total": 25,
+    "answered": 22
+  }
+}
+```
+
+Response (Advisor):
+```json
+{
+  "userId": "user_789",
+  "role": "ADVISOR",
+  "memberSince": "2025-01-10T10:00:00Z",
+  "orders": {
+    "total": 5,
+    "completed": 5,
+    "spending": 450.00
+  },
+  "questions": {
+    "total": 3,
+    "answered": 3
+  },
+  "advisor": {
+    "verificationStatus": "VERIFIED",
+    "verificationLevel": "PROFESSIONAL",
+    "rating": 4.8,
+    "totalReviews": 45,
+    "answers": {
+      "total": 156
+    },
+    "services": {
+      "total": 8,
+      "active": 7
+    },
+    "orders": {
+      "total": 89,
+      "revenue": 18750.00
+    },
+    "performance": {
+      "responseTime": 120,
+      "acceptanceRate": 0.85,
+      "averageRating": 4.8
+    }
+  }
+}
+```
+
+#### Get User Analytics by ID (Admin)
+
+```bash
+curl -X GET http://localhost:3000/analytics/user/user_789 \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+#### Get Advisor Leaderboard
+
+```bash
+# Top 10 advisors
+curl -X GET "http://localhost:3000/analytics/leaderboard/advisors?limit=10" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+[
+  {
+    "rank": 1,
+    "advisorId": "advisor_123",
+    "name": "Maria Schmidt",
+    "rating": 4.95,
+    "totalReviews": 128,
+    "totalEarnings": 45280.50,
+    "responseTime": 45,
+    "acceptanceRate": 0.92
+  },
+  {
+    "rank": 2,
+    "advisorId": "advisor_456",
+    "name": "Thomas Mueller",
+    "rating": 4.89,
+    "totalReviews": 95,
+    "totalEarnings": 38920.00,
+    "responseTime": 60,
+    "acceptanceRate": 0.88
+  }
+]
+```
+
+#### Get Popular Services
+
+```bash
+curl -X GET "http://localhost:3000/analytics/popular/services?limit=10" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+[
+  {
+    "rank": 1,
+    "serviceId": "service_789",
+    "title": "Business Formation Package",
+    "category": "LEGAL",
+    "price": 299.00,
+    "totalOrders": 156,
+    "averageRating": 4.9,
+    "totalRevenue": 46644.00,
+    "advisor": {
+      "name": "Maria Schmidt"
+    }
+  }
+]
+```
+
+#### Get Revenue Analytics
+
+```bash
+curl -X GET "http://localhost:3000/analytics/revenue?period=30d" \
+  -H "Authorization: Bearer $ADMIN_TOKEN"
+```
+
+Response:
+```json
+{
+  "period": "30d",
+  "dateRange": {
+    "from": "2025-10-17T00:00:00Z",
+    "to": "2025-11-16T00:00:00Z"
+  },
+  "totalRevenue": 45820.00,
+  "totalOrders": 198,
+  "averageOrderValue": "231.41",
+  "byCategory": {
+    "legal": 32480.00,
+    "tax": 13340.00
+  }
+}
+```
+
+---
+
+### Admin & Analytics Summary
+
+**Admin Features:**
+- User management (view, suspend, delete, change roles)
+- Advisor verification workflow
+- Pending advisor queue
+- Audit log tracking
+- Platform-wide statistics
+- Content moderation capabilities
+
+**Analytics Features:**
+- Platform-wide metrics and trends
+- User growth and engagement
+- Revenue analytics by period
+- Order statistics and conversion
+- Advisor performance metrics
+- Service popularity rankings
+- Leaderboard for top advisors
+- Individual user analytics
+- Category breakdown (Legal vs Tax)
+
+**Access Control:**
+- Admin endpoints: ADMIN role required
+- Platform analytics: ADMIN role only
+- User analytics: Users can view their own, admins can view all
+- Audit logs: ADMIN role only
+
+**Audit Logging:**
+All admin actions are automatically logged with:
+- Admin user who performed the action
+- Action type (APPROVE_ADVISOR, SUSPEND_USER, etc.)
+- Entity affected (User, Advisor, etc.)
+- Details and context
+- Timestamp
+
+**Use Cases:**
+- Monitor platform health and growth
+- Identify top-performing advisors
+- Track revenue trends
+- Manage user accounts
+- Verify advisor credentials
+- Investigate user issues
+- Generate business insights
+- Compliance and auditing
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -3071,6 +3588,23 @@ All 8 weeks of Phase 1 implementation are now complete:
 - Multiple AI model support (GPT-4, Claude)
 - Token usage tracking
 
+✅ **Phase 2 Month 6 Week 23-24**:
+- Admin dashboard for platform management
+- User management (view, suspend, delete, role changes)
+- Advisor verification workflow
+- Pending advisor queue management
+- Audit log tracking for all admin actions
+- Platform-wide statistics and metrics
+- Comprehensive analytics system
+- User growth and engagement metrics
+- Revenue analytics by period (7d, 30d, 90d, 1y)
+- Advisor leaderboard and rankings
+- Popular services tracking
+- Individual user analytics (clients & advisors)
+- Performance metrics (response time, acceptance rate)
+- Category breakdown (Legal vs Tax)
+- Advanced filtering and search for admin
+
 ---
 
 ## Phase 2 Progress! 🚀
@@ -3080,17 +3614,18 @@ All 8 weeks of Phase 1 implementation are now complete:
 - ✅ Weeks 17-18: Video Call Integration
 - ✅ Weeks 19-20: Document Workspace
 - ✅ Weeks 21-22: AI Features (Templates, Analysis, Drafter)
+- ✅ Weeks 23-24: Admin Dashboard & Analytics
 
-**Completed:** Phase 2 Month 4-6 implementations complete!
+**Completed:** Phase 2 Complete! All 6 months of enhancements delivered.
 
 ## Next Steps
 
 **Future Features:**
-- Email verification
-- Password reset
+- Email verification & password reset
 - File upload integration (S3/storage)
-- Advisor verification workflow (admin)
 - Real-time collaboration on documents
 - Advanced search across platform
-- Analytics dashboard
+- Push notifications
 - Mobile app development
+- White-label solutions
+- API for third-party integrations

@@ -20,6 +20,8 @@ import { DocumentsModule } from './modules/documents/documents.module';
 import { TemplatesModule } from './modules/templates/templates.module';
 import { ContractAnalysisModule } from './modules/contract-analysis/contract-analysis.module';
 import { DocumentDrafterModule } from './modules/document-drafter/document-drafter.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -52,6 +54,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     TemplatesModule,
     ContractAnalysisModule,
     DocumentDrafterModule,
+    AdminModule,
+    AnalyticsModule,
   ],
   providers: [
     {
