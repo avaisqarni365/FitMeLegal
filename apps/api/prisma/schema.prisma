@@ -47,6 +47,8 @@ model User {
   emailPreferences     EmailPreferences?
   emailLogs            EmailLog[]
   fileUploads          FileUpload[]
+  notifications        Notification[]
+  notificationPreferences NotificationPreferences?
 
   @@index([email])
   @@index([role])
@@ -776,6 +778,68 @@ model FileUpload {
   @@map("file_uploads")
 }
 
+model Notification {
+  id          String              @id @default(uuid())
+  userId      String              @map("user_id")
+  user        User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Notification content
+  type        NotificationType
+  title       String
+  message     String              @db.Text
+  data        Json?               // Additional data (order ID, message ID, etc.)
+
+  // Metadata
+  priority    NotificationPriority @default(INFO)
+  category    String?             // "orders", "messages", "meetings", etc.
+
+  // Actions
+  actionUrl   String?             @map("action_url")
+  actionText  String?             @map("action_text")
+
+  // Status
+  isRead      Boolean             @default(false) @map("is_read")
+  readAt      DateTime?           @map("read_at")
+
+  // Grouping (for similar notifications)
+  groupKey    String?             @map("group_key")
+
+  createdAt   DateTime            @default(now()) @map("created_at")
+  updatedAt   DateTime            @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([type])
+  @@index([isRead])
+  @@index([priority])
+  @@index([groupKey])
+  @@index([createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model NotificationPreferences {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Push notification preferences (in-app)
+  orderUpdates           Boolean  @default(true) @map("order_updates")
+  questionAnswers        Boolean  @default(true) @map("question_answers")
+  newMessages            Boolean  @default(true) @map("new_messages")
+  meetingReminders       Boolean  @default(true) @map("meeting_reminders")
+  subscriptionUpdates    Boolean  @default(true) @map("subscription_updates")
+  advisorApplications    Boolean  @default(true) @map("advisor_applications")
+  platformNotifications  Boolean  @default(true) @map("platform_notifications")
+
+  // Notification delivery settings
+  desktopNotifications   Boolean  @default(false) @map("desktop_notifications")
+  soundEnabled           Boolean  @default(true) @map("sound_enabled")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("notification_preferences")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -1017,4 +1081,68 @@ enum FileStatus {
   PROCESSING
   COMPLETED
   FAILED
+}
+
+enum NotificationType {
+  // Authentication
+  WELCOME
+  EMAIL_VERIFIED
+  PASSWORD_CHANGED
+
+  // Orders
+  ORDER_CREATED
+  ORDER_CONFIRMED
+  ORDER_IN_PROGRESS
+  ORDER_DELIVERED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+  ORDER_REFUNDED
+
+  // Questions & Answers
+  QUESTION_ANSWERED
+  ANSWER_COMMENTED
+  ANSWER_ACCEPTED
+
+  // Messages
+  NEW_MESSAGE
+  MESSAGE_REPLIED
+
+  // Meetings
+  MEETING_SCHEDULED
+  MEETING_REMINDER
+  MEETING_STARTED
+  MEETING_CANCELLED
+  MEETING_COMPLETED
+
+  // Subscriptions
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_RENEWED
+  SUBSCRIPTION_EXPIRING
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_PAYMENT_FAILED
+
+  // Advisor
+  ADVISOR_APPLICATION_SUBMITTED
+  ADVISOR_APPROVED
+  ADVISOR_REJECTED
+  NEW_REVIEW_RECEIVED
+
+  // Documents
+  DOCUMENT_SHARED
+  DOCUMENT_COMMENT
+  CONTRACT_SIGNED
+
+  // System
+  SYSTEM_ANNOUNCEMENT
+  MAINTENANCE_SCHEDULED
+  PLATFORM_UPDATE
+
+  // Other
+  OTHER
+}
+
+enum NotificationPriority {
+  INFO
+  WARNING
+  URGENT
 }

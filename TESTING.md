@@ -4085,13 +4085,296 @@ curl -X POST "http://localhost:3001/api/upload/file?category=SERVICE_IMAGE&entit
 
 ---
 
+## In-App Notification System (Phase 3 Week 3)
+
+The In-App Notification System provides real-time notifications for platform events with SSE (Server-Sent Events) support.
+
+### Get Notifications
+
+#### Get My Notifications
+
+```bash
+# All notifications
+curl -X GET http://localhost:3001/api/notifications \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by read status
+curl -X GET "http://localhost:3001/api/notifications?isRead=false" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by type
+curl -X GET "http://localhost:3001/api/notifications?type=ORDER_CREATED" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by priority
+curl -X GET "http://localhost:3001/api/notifications?priority=URGENT" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by category
+curl -X GET "http://localhost:3001/api/notifications?category=orders" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Pagination
+curl -X GET "http://localhost:3001/api/notifications?page=1&limit=20" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+{
+  "notifications": [
+    {
+      "id": "notif_123",
+      "userId": "user_123",
+      "type": "ORDER_CREATED",
+      "title": "Order Placed",
+      "message": "Your order #order_456 has been placed successfully.",
+      "data": {
+        "orderId": "order_456"
+      },
+      "priority": "INFO",
+      "category": "orders",
+      "actionUrl": "/orders/order_456",
+      "actionText": "View Order",
+      "isRead": false,
+      "readAt": null,
+      "createdAt": "2025-11-16T10:00:00Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 123,
+    "totalPages": 3
+  }
+}
+```
+
+#### Get Unread Count
+
+```bash
+curl -X GET http://localhost:3001/api/notifications/unread-count \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+{
+  "count": 5
+}
+```
+
+### Manage Notifications
+
+#### Mark Notification as Read
+
+```bash
+curl -X PATCH http://localhost:3001/api/notifications/notif_123/read \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Mark All Notifications as Read
+
+```bash
+curl -X POST http://localhost:3001/api/notifications/mark-all-read \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+{
+  "updated": 5
+}
+```
+
+#### Delete Notification
+
+```bash
+curl -X DELETE http://localhost:3001/api/notifications/notif_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Delete All Read Notifications
+
+```bash
+curl -X DELETE http://localhost:3001/api/notifications/read/all \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+{
+  "deleted": 10
+}
+```
+
+### Notification Preferences
+
+#### Get Notification Preferences
+
+```bash
+curl -X GET http://localhost:3001/api/notifications/preferences \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Update Notification Preferences
+
+```bash
+curl -X PATCH http://localhost:3001/api/notifications/preferences \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "orderUpdates": false,
+    "desktopNotifications": true,
+    "soundEnabled": false
+  }'
+```
+
+### Real-Time Notifications (SSE)
+
+Server-Sent Events enable real-time notification delivery.
+
+#### Connect to Notification Stream
+
+```javascript
+// JavaScript/TypeScript example
+const eventSource = new EventSource(
+  'http://localhost:3001/api/notifications/stream',
+  {
+    headers: {
+      'Authorization': `Bearer ${accessToken}`
+    }
+  }
+);
+
+eventSource.onmessage = (event) => {
+  const notification = JSON.parse(event.data);
+  console.log('New notification:', notification);
+
+  // Update UI
+  showNotification(notification.data);
+  updateUnreadCount();
+};
+
+eventSource.onerror = (error) => {
+  console.error('SSE error:', error);
+  eventSource.close();
+};
+```
+
+#### Using curl for SSE Testing
+
+```bash
+curl -N http://localhost:3001/api/notifications/stream \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### Notification Types
+
+**Authentication:** WELCOME, EMAIL_VERIFIED, PASSWORD_CHANGED
+
+**Orders:** ORDER_CREATED, ORDER_CONFIRMED, ORDER_IN_PROGRESS, ORDER_DELIVERED, ORDER_COMPLETED, ORDER_CANCELLED, ORDER_REFUNDED
+
+**Questions & Answers:** QUESTION_ANSWERED, ANSWER_COMMENTED, ANSWER_ACCEPTED
+
+**Messages:** NEW_MESSAGE, MESSAGE_REPLIED
+
+**Meetings:** MEETING_SCHEDULED, MEETING_REMINDER, MEETING_STARTED, MEETING_CANCELLED, MEETING_COMPLETED
+
+**Subscriptions:** SUBSCRIPTION_CREATED, SUBSCRIPTION_RENEWED, SUBSCRIPTION_EXPIRING, SUBSCRIPTION_CANCELLED, SUBSCRIPTION_PAYMENT_FAILED
+
+**Advisor:** ADVISOR_APPLICATION_SUBMITTED, ADVISOR_APPROVED, ADVISOR_REJECTED, NEW_REVIEW_RECEIVED
+
+**Documents:** DOCUMENT_SHARED, DOCUMENT_COMMENT, CONTRACT_SIGNED
+
+**System:** SYSTEM_ANNOUNCEMENT, MAINTENANCE_SCHEDULED, PLATFORM_UPDATE
+
+### Priority Levels
+
+- **INFO** - Regular informational notifications (default)
+- **WARNING** - Important notifications requiring attention
+- **URGENT** - Critical notifications requiring immediate action
+
+### Integration Examples
+
+#### Create Order Notification
+
+```typescript
+// In OrdersService
+await this.notificationsService.notifyOrderUpdate(
+  order.userId,
+  order,
+  'CREATED'
+);
+```
+
+#### Create Message Notification
+
+```typescript
+// In MessagingService
+await this.notificationsService.notifyNewMessage(
+  message.recipientId,
+  {
+    id: message.id,
+    senderName: sender.firstName,
+    conversationId: message.conversationId,
+  }
+);
+```
+
+### Frontend Integration
+
+```typescript
+// React hook for notifications
+function useNotifications(accessToken: string) {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  useEffect(() => {
+    // Connect to SSE stream
+    const eventSource = new EventSource('/api/notifications/stream', {
+      headers: { Authorization: `Bearer ${accessToken}` }
+    });
+
+    eventSource.onmessage = (event) => {
+      const notification = JSON.parse(event.data).data;
+      setNotifications(prev => [notification, ...prev]);
+      setUnreadCount(prev => prev + 1);
+    };
+
+    return () => eventSource.close();
+  }, [accessToken]);
+
+  return { notifications, unreadCount };
+}
+```
+
+### Features
+
+- **Real-time Delivery:** SSE for instant notifications
+- **User Preferences:** Granular control over notification types
+- **Priority Levels:** INFO, WARNING, URGENT
+- **Action Buttons:** Deep links to relevant pages
+- **Bulk Operations:** Mark all read, delete all read
+- **Filtering:** By type, priority, category, read status
+- **Pagination:** Efficient loading
+
+### Future Enhancements
+
+- **Push Notifications:** Browser push (Web Push API)
+- **Mobile Push:** FCM/APNS
+- **Email Digests:** Daily/weekly summaries
+- **Smart Grouping:** Auto-group similar notifications
+- **Quiet Hours:** Suppress during specified hours
+
+---
+
 ## Next Steps
 
 **Future Features:**
 - Email verification & password reset
 - Real-time collaboration on documents
 - Advanced search across platform
-- Push notifications
 - Mobile app development
 - White-label solutions
 - API for third-party integrations
