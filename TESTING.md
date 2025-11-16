@@ -1113,6 +1113,261 @@ curl -X POST http://localhost:3001/api/messaging/conversations/CONVERSATION_ID/m
 
 ---
 
+## Reviews & Ratings
+
+### Create a Review (Client Only)
+```bash
+# Review a completed order
+curl -X POST http://localhost:3001/api/reviews \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "advisorId": "ADVISOR_ID",
+    "orderId": "ORDER_ID",
+    "serviceId": "SERVICE_ID",
+    "rating": 5,
+    "comment": "Excellent service! Very professional and thorough contract review. Highly recommend!"
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "review-uuid",
+  "reviewerId": "client-user-id",
+  "advisorId": "advisor-id",
+  "orderId": "order-id",
+  "serviceId": "service-id",
+  "rating": 5,
+  "comment": "Excellent service!...",
+  "verified": true,
+  "helpful": 0,
+  "createdAt": "2024-11-16T12:00:00.000Z",
+  "reviewer": {
+    "id": "client-user-id",
+    "firstName": "John",
+    "lastName": "Doe",
+    "avatarUrl": null
+  }
+}
+```
+
+**Note:** Reviews can only be created after order completion. Verified reviews have `verified: true`.
+
+### Get Reviews for an Advisor (Public)
+```bash
+# Get all reviews for an advisor
+curl http://localhost:3001/api/reviews/advisor/ADVISOR_ID
+
+# With filters
+curl "http://localhost:3001/api/reviews/advisor/ADVISOR_ID?minRating=4&verifiedOnly=true&page=1&limit=10"
+```
+
+**Response:**
+```json
+{
+  "data": [
+    {
+      "id": "review-uuid",
+      "rating": 5,
+      "comment": "Excellent service!",
+      "verified": true,
+      "response": "Thank you for your kind words!",
+      "createdAt": "2024-11-16T12:00:00.000Z",
+      "reviewer": {
+        "id": "user-id",
+        "firstName": "John",
+        "lastName": "D.",
+        "avatarUrl": null
+      }
+    }
+  ],
+  "meta": {
+    "total": 42,
+    "page": 1,
+    "limit": 10,
+    "totalPages": 5
+  },
+  "stats": {
+    "averageRating": 4.8,
+    "totalReviews": 42,
+    "distribution": {
+      "5": 30,
+      "4": 10,
+      "3": 2,
+      "2": 0,
+      "1": 0
+    }
+  }
+}
+```
+
+### Get Advisor Rating Statistics (Public)
+```bash
+curl http://localhost:3001/api/reviews/advisor/ADVISOR_ID/stats
+```
+
+**Response:**
+```json
+{
+  "averageRating": 4.8,
+  "totalReviews": 42,
+  "distribution": {
+    "5": 30,
+    "4": 10,
+    "3": 2,
+    "2": 0,
+    "1": 0
+  }
+}
+```
+
+### Get My Reviews
+```bash
+# Get all reviews I've written
+curl http://localhost:3001/api/reviews/my-reviews \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+
+# With pagination
+curl "http://localhost:3001/api/reviews/my-reviews?page=1&limit=10" \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+### Get a Single Review (Public)
+```bash
+curl http://localhost:3001/api/reviews/REVIEW_ID
+```
+
+### Update a Review (Owner Only)
+```bash
+curl -X PATCH http://localhost:3001/api/reviews/REVIEW_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 5,
+    "comment": "Updated: Even better than I initially thought!"
+  }'
+```
+
+### Advisor Response to Review (Advisor Only)
+```bash
+curl -X POST http://localhost:3001/api/reviews/REVIEW_ID/respond \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "response": "Thank you for your kind words! It was a pleasure working with you on this project."
+  }'
+```
+
+**Response:**
+```json
+{
+  "id": "review-uuid",
+  "rating": 5,
+  "comment": "Excellent service!",
+  "response": "Thank you for your kind words! It was a pleasure working with you.",
+  "createdAt": "2024-11-16T12:00:00.000Z",
+  "updatedAt": "2024-11-16T13:00:00.000Z"
+}
+```
+
+### Delete a Review (Owner or Admin)
+```bash
+curl -X DELETE http://localhost:3001/api/reviews/REVIEW_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Review deleted"
+}
+```
+
+**Note:** Deleting a review automatically recalculates the advisor's rating.
+
+---
+
+## Reviews Workflow Example
+
+Complete review lifecycle:
+
+```bash
+# 1. Client completes an order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/complete \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+
+# 2. Client creates a review
+curl -X POST http://localhost:3001/api/reviews \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "advisorId": "ADVISOR_ID",
+    "orderId": "ORDER_ID",
+    "serviceId": "SERVICE_ID",
+    "rating": 5,
+    "comment": "Excellent work! Very professional and detailed."
+  }'
+# Review is marked as "verified" because it's from a completed order
+
+# 3. Public user views advisor profile with ratings
+curl http://localhost:3001/api/reviews/advisor/ADVISOR_ID/stats
+# Shows: averageRating: 4.8, totalReviews: 43 (updated)
+
+# 4. Advisor responds to the review
+curl -X POST http://localhost:3001/api/reviews/REVIEW_ID/respond \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "response": "Thank you for the great review! Happy to help anytime."
+  }'
+
+# 5. Client views their reviews
+curl http://localhost:3001/api/reviews/my-reviews \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+
+# 6. (Optional) Client updates their review
+curl -X PATCH http://localhost:3001/api/reviews/REVIEW_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "rating": 5,
+    "comment": "Update: Still impressed weeks later!"
+  }'
+# Advisor rating is automatically recalculated
+```
+
+### Rating System
+
+**Rating Scale:**
+- 5 stars: Excellent
+- 4 stars: Good
+- 3 stars: Average
+- 2 stars: Below Average
+- 1 star: Poor
+
+**Automatic Calculations:**
+- Advisor's average rating is recalculated when:
+  - New review is created
+  - Review is updated (rating changed)
+  - Review is deleted
+- Service's average rating is also updated
+- Advisor profile shows total reviews count
+
+**Verified Reviews:**
+- Reviews from completed orders are marked as verified
+- Verified reviews have higher trust score
+- Can filter to show only verified reviews
+
+**Review Permissions:**
+- **Create**: Clients only, after order completion
+- **Update**: Review owner only
+- **Delete**: Review owner or admin
+- **Respond**: Only the advisor being reviewed
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -1183,10 +1438,25 @@ npm run prisma:seed
 - Optional conversation-order linking
 - Attachment support for messages
 
-## Next Steps
+✅ **Phase 1 Month 2 Week 8**:
+- Reviews & ratings system for advisors and services
+- 5-star rating system with comments
+- Verified reviews for completed orders
+- Automatic rating calculations (advisor & service)
+- Rating distribution statistics
+- Advisor response to reviews
+- Filter reviews by rating and verified status
+- Prevent duplicate reviews and self-reviews
 
-**Phase 1 Month 2** (Remaining):
-- Week 8: Reviews & ratings system
+---
+
+## Phase 1 Complete! 🎉
+
+All 8 weeks of Phase 1 implementation are now complete:
+- ✅ Month 1: Core platform (Auth, Users, Advisors, Q&A)
+- ✅ Month 2: Marketplace (Services, Orders, Payments, Messaging, Reviews)
+
+## Next Steps
 
 **Future Features:**
 - Email verification

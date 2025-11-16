@@ -128,15 +128,21 @@ model Review {
   reviewer   User     @relation(fields: [reviewerId], references: [id], onDelete: Cascade)
   advisorId  String   @map("advisor_id")
   advisor    Advisor  @relation(fields: [advisorId], references: [id], onDelete: Cascade)
-  questionId String?  @map("question_id")
-  rating     Int
+  orderId    String?  @map("order_id") // Review for a completed order
+  serviceId  String?  @map("service_id") // Service being reviewed
+  questionId String?  @map("question_id") // Review for Q&A
+  rating     Int // 1-5 stars
   comment    String?  @db.Text
-  response   String?  @db.Text
+  response   String?  @db.Text // Advisor's response to review
+  helpful    Int      @default(0) // Number of users who found review helpful
+  verified   Boolean  @default(false) // Verified purchase/service
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   @@index([advisorId])
+  @@index([serviceId])
   @@index([rating])
+  @@index([verified])
   @@index([createdAt(sort: Desc)])
   @@map("reviews")
 }
