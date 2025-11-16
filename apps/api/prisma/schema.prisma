@@ -40,6 +40,9 @@ model User {
   projects             Project[]
   documents            Document[]
   documentComments     DocumentComment[]
+  documentTemplates    DocumentTemplate[]
+  contractAnalyses     ContractAnalysis[]
+  draftedDocuments     DraftedDocument[]
 
   @@index([email])
   @@index([role])
@@ -517,6 +520,123 @@ model DocumentComment {
   @@map("document_comments")
 }
 
+model DocumentTemplate {
+  id              String              @id @default(uuid())
+  creatorId       String              @map("creator_id")
+  creator         User                @relation(fields: [creatorId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?             @db.Text
+  category        TemplateCategory
+  subcategory     String?
+
+  // Template content with variables {{variable_name}}
+  templateContent String              @map("template_content") @db.Text
+  variables       Json                @default("[]") // Array of {name, type, description, required}
+
+  // Marketplace
+  isPublic        Boolean             @default(false) @map("is_public")
+  price           Decimal?            @db.Decimal(10, 2) // null for free templates
+  currency        String              @default("EUR")
+
+  // Metadata
+  tags            Json                @default("[]")
+  language        String              @default("en")
+  usageCount      Int                 @default(0) @map("usage_count")
+
+  active          Boolean             @default(true)
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+
+  draftedDocuments DraftedDocument[]
+
+  @@index([creatorId])
+  @@index([category])
+  @@index([isPublic])
+  @@index([active])
+  @@map("document_templates")
+}
+
+model ContractAnalysis {
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Source document
+  documentId      String?            @map("document_id") // Optional: if analyzing saved document
+  fileName        String             @map("file_name")
+  fileUrl         String             @map("file_url")
+  fileSize        Int                @map("file_size")
+  mimeType        String             @map("mime_type")
+
+  // Analysis status
+  status          AnalysisStatus     @default(PENDING)
+  errorMessage    String?            @map("error_message") @db.Text
+
+  // AI analysis results
+  summary         String?            @db.Text // High-level summary
+  risks           Json?              @default("[]") // Array of identified risks
+  keyTerms        Json?              @default("[]") // Extracted important clauses
+  obligations     Json?              @default("[]") // Party obligations
+  recommendations Json?              @default("[]") // AI recommendations
+  fullAnalysis    Json?              @map("full_analysis") @default("{}") // Complete structured data
+
+  // AI metadata
+  aiModel         String?            @map("ai_model") // "gpt-4", "claude-3-opus", etc.
+  tokensUsed      Int?               @map("tokens_used")
+  processingTime  Int?               @map("processing_time") // milliseconds
+
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("contract_analyses")
+}
+
+model DraftedDocument {
+  id              String             @id @default(uuid())
+  userId          String             @map("user_id")
+  user            User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Optional: if using a template
+  templateId      String?            @map("template_id")
+  template        DocumentTemplate?  @relation(fields: [templateId], references: [id], onDelete: SetNull)
+
+  title           String
+  description     String?            @db.Text
+
+  // Generation
+  userPrompt      String?            @map("user_prompt") @db.Text // If free-form generation
+  variables       Json?              @default("{}") // If using template
+  generatedContent String            @map("generated_content") @db.Text
+
+  // Document status
+  status          DraftStatus        @default(DRAFT)
+
+  // AI metadata
+  aiModel         String?            @map("ai_model")
+  tokensUsed      Int?               @map("tokens_used")
+
+  // Optional: save to document workspace
+  projectId       String?            @map("project_id")
+  documentId      String?            @map("document_id") // If saved as Document
+
+  // Export
+  exportedAt      DateTime?          @map("exported_at")
+  exportFormat    String?            @map("export_format") // "pdf", "docx", etc.
+
+  createdAt       DateTime           @default(now()) @map("created_at")
+  updatedAt       DateTime           @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([templateId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("drafted_documents")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -628,4 +748,30 @@ enum RecordingStatus {
   PROCESSING
   READY
   FAILED
+}
+
+enum TemplateCategory {
+  CONTRACT
+  AGREEMENT
+  LEGAL_NOTICE
+  BUSINESS_FORMATION
+  EMPLOYMENT
+  REAL_ESTATE
+  INTELLECTUAL_PROPERTY
+  TAX_FILING
+  COMPLIANCE
+  OTHER
+}
+
+enum AnalysisStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum DraftStatus {
+  DRAFT
+  REVIEWING
+  FINALIZED
 }

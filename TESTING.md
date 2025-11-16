@@ -2298,6 +2298,631 @@ This will:
 
 ---
 
+## AI Features (Phase 2 Weeks 21-22)
+
+The AI Features module provides three powerful capabilities: Document Templates, Contract Analysis, and AI-powered Document Drafting. These features leverage AI to streamline legal document creation and review.
+
+### Document Templates
+
+Create and manage reusable document templates with variable placeholders.
+
+#### Create a Template
+
+```bash
+curl -X POST http://localhost:3000/templates \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Software Development Agreement",
+    "description": "Comprehensive agreement for software development projects",
+    "category": "CONTRACT",
+    "subcategory": "Software & Technology",
+    "templateContent": "# SOFTWARE DEVELOPMENT AGREEMENT\n\nThis Agreement is made on {{agreement_date}} between:\n\n**Client:** {{client_name}}\nAddress: {{client_address}}\n\n**Developer:** {{developer_name}}\nAddress: {{developer_address}}\n\n## 1. Project Scope\n\n{{project_description}}\n\n## 2. Compensation\n\nThe Client agrees to pay the Developer {{total_price}} EUR for the completion of the project.\n\n### Payment Schedule:\n- 30% upon signing: {{deposit_amount}} EUR\n- 40% upon milestone completion: {{milestone_amount}} EUR  \n- 30% upon final delivery: {{final_amount}} EUR\n\n## 3. Timeline\n\nProject start: {{start_date}}\nExpected completion: {{end_date}}\n\n## 4. Intellectual Property\n\n{{ip_clause}}\n\n## 5. Confidentiality\n\nBoth parties agree to keep confidential information private for {{confidentiality_period}} years.\n\n## 6. Termination\n\n{{termination_clause}}\n\n## 7. Governing Law\n\nThis agreement shall be governed by the laws of {{governing_law}}.\n\n---\n\n**Client Signature:** _________________\nDate: {{signature_date}}\n\n**Developer Signature:** _________________\nDate: {{signature_date}}",
+    "variables": [
+      {
+        "name": "agreement_date",
+        "type": "date",
+        "description": "Date when agreement is signed",
+        "required": true
+      },
+      {
+        "name": "client_name",
+        "type": "text",
+        "description": "Full legal name of client",
+        "required": true
+      },
+      {
+        "name": "client_address",
+        "type": "textarea",
+        "description": "Client full address",
+        "required": true
+      },
+      {
+        "name": "developer_name",
+        "type": "text",
+        "description": "Full legal name of developer",
+        "required": true
+      },
+      {
+        "name": "developer_address",
+        "type": "textarea",
+        "description": "Developer full address",
+        "required": true
+      },
+      {
+        "name": "project_description",
+        "type": "textarea",
+        "description": "Detailed description of the software project",
+        "required": true
+      },
+      {
+        "name": "total_price",
+        "type": "number",
+        "description": "Total project cost in EUR",
+        "required": true
+      },
+      {
+        "name": "deposit_amount",
+        "type": "number",
+        "description": "30% deposit amount",
+        "required": true
+      },
+      {
+        "name": "milestone_amount",
+        "type": "number",
+        "description": "40% milestone payment",
+        "required": true
+      },
+      {
+        "name": "final_amount",
+        "type": "number",
+        "description": "30% final payment",
+        "required": true
+      },
+      {
+        "name": "start_date",
+        "type": "date",
+        "description": "Project start date",
+        "required": true
+      },
+      {
+        "name": "end_date",
+        "type": "date",
+        "description": "Expected completion date",
+        "required": true
+      },
+      {
+        "name": "ip_clause",
+        "type": "textarea",
+        "description": "Intellectual property ownership clause",
+        "required": true,
+        "defaultValue": "Upon full payment, all intellectual property rights shall transfer to the Client."
+      },
+      {
+        "name": "confidentiality_period",
+        "type": "number",
+        "description": "Years of confidentiality obligation",
+        "required": true,
+        "defaultValue": "3"
+      },
+      {
+        "name": "termination_clause",
+        "type": "textarea",
+        "description": "Terms for contract termination",
+        "required": true,
+        "defaultValue": "Either party may terminate this agreement with 30 days written notice."
+      },
+      {
+        "name": "governing_law",
+        "type": "text",
+        "description": "Jurisdiction for legal matters",
+        "required": true,
+        "defaultValue": "Germany"
+      },
+      {
+        "name": "signature_date",
+        "type": "date",
+        "description": "Date of signature",
+        "required": true
+      }
+    ],
+    "isPublic": true,
+    "price": 49.99,
+    "tags": ["software", "development", "contract", "technology"],
+    "language": "en"
+  }'
+```
+
+Response:
+```json
+{
+  "id": "tpl_123",
+  "creatorId": "user_123",
+  "name": "Software Development Agreement",
+  "category": "CONTRACT",
+  "templateContent": "...",
+  "variables": [...],
+  "isPublic": true,
+  "price": 49.99,
+  "usageCount": 0,
+  "active": true,
+  "createdAt": "2025-11-16T10:00:00Z",
+  "creator": {
+    "id": "user_123",
+    "firstName": "John",
+    "lastName": "Doe"
+  }
+}
+```
+
+#### Get All Templates
+
+```bash
+# Get public templates + my own templates
+curl -X GET "http://localhost:3000/templates" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by category
+curl -X GET "http://localhost:3000/templates?category=CONTRACT" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by language
+curl -X GET "http://localhost:3000/templates?language=en" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Get My Templates
+
+```bash
+curl -X GET http://localhost:3000/templates/my-templates \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Get Template by ID
+
+```bash
+curl -X GET http://localhost:3000/templates/tpl_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Update Template
+
+```bash
+curl -X PATCH http://localhost:3000/templates/tpl_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Software Development Agreement v2",
+    "price": 59.99,
+    "isPublic": false
+  }'
+```
+
+#### Delete Template
+
+```bash
+curl -X DELETE http://localhost:3000/templates/tpl_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+---
+
+### Contract Analysis
+
+AI-powered contract analysis to identify risks, key terms, obligations, and recommendations.
+
+#### Analyze a Contract
+
+```bash
+curl -X POST http://localhost:3000/contract-analysis \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileName": "employment_contract.pdf",
+    "fileUrl": "https://storage.fitmelegal.com/contracts/emp_contract_123.pdf",
+    "fileSize": 524288,
+    "mimeType": "application/pdf",
+    "documentId": "doc_123"
+  }'
+```
+
+Response (initial - PENDING status):
+```json
+{
+  "id": "analysis_123",
+  "userId": "user_123",
+  "documentId": "doc_123",
+  "fileName": "employment_contract.pdf",
+  "fileUrl": "https://storage.fitmelegal.com/contracts/emp_contract_123.pdf",
+  "fileSize": 524288,
+  "mimeType": "application/pdf",
+  "status": "PENDING",
+  "createdAt": "2025-11-16T10:00:00Z"
+}
+```
+
+The analysis will be processed asynchronously. Poll for results:
+
+```bash
+curl -X GET http://localhost:3000/contract-analysis/analysis_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response (when COMPLETED):
+```json
+{
+  "id": "analysis_123",
+  "userId": "user_123",
+  "fileName": "employment_contract.pdf",
+  "status": "COMPLETED",
+  "summary": "This is a standard employment agreement with common clauses for confidentiality, non-compete, and intellectual property. The contract appears generally favorable but contains some potentially concerning terms.",
+  "risks": [
+    {
+      "severity": "HIGH",
+      "category": "Non-Compete",
+      "description": "The non-compete clause has a broad geographical scope (nationwide) and extended duration (2 years), which may be overly restrictive.",
+      "clause": "Section 5.2"
+    },
+    {
+      "severity": "MEDIUM",
+      "category": "Termination",
+      "description": "Termination clause allows employer to terminate without cause with only 30 days notice.",
+      "clause": "Section 8.1"
+    },
+    {
+      "severity": "LOW",
+      "category": "Intellectual Property",
+      "description": "IP clause broadly assigns all work product to employer, including potentially unrelated personal projects.",
+      "clause": "Section 6.3"
+    }
+  ],
+  "keyTerms": [
+    {
+      "term": "Compensation",
+      "value": "Annual salary of $120,000 with quarterly performance bonuses",
+      "clause": "Section 3.1"
+    },
+    {
+      "term": "Start Date",
+      "value": "January 15, 2026",
+      "clause": "Section 2.1"
+    },
+    {
+      "term": "Benefits",
+      "value": "Health insurance, 401(k) matching up to 5%, 20 days PTO",
+      "clause": "Section 3.3"
+    }
+  ],
+  "obligations": [
+    {
+      "party": "Employee",
+      "obligation": "Maintain confidentiality of proprietary information",
+      "timeline": "Throughout employment and 5 years after",
+      "clause": "Section 5.1"
+    },
+    {
+      "party": "Employer",
+      "obligation": "Provide health insurance benefits",
+      "timeline": "Effective from start date",
+      "clause": "Section 3.3"
+    }
+  ],
+  "recommendations": [
+    "Negotiate the non-compete clause to reduce geographical scope or duration",
+    "Consider adding a severance pay provision in case of termination without cause",
+    "Clarify the IP clause to exclude personal projects created outside work hours",
+    "Request addition of arbitration clause to avoid costly litigation"
+  ],
+  "fullAnalysis": {
+    "contractType": "Employment Agreement",
+    "parties": ["TechCorp Inc.", "John Doe"],
+    "effectiveDate": "2026-01-15",
+    "governingLaw": "State of California",
+    "overallRiskScore": 6.5,
+    "favorability": "Moderately Favorable to Employer"
+  },
+  "aiModel": "gpt-4",
+  "tokensUsed": 2500,
+  "processingTime": 4500,
+  "createdAt": "2025-11-16T10:00:00Z",
+  "updatedAt": "2025-11-16T10:00:05Z"
+}
+```
+
+#### Get All My Analyses
+
+```bash
+curl -X GET http://localhost:3000/contract-analysis \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Delete an Analysis
+
+```bash
+curl -X DELETE http://localhost:3000/contract-analysis/analysis_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+---
+
+### Document Drafter
+
+AI-powered document generation from templates or free-form prompts.
+
+#### Draft Document from AI Prompt (Free-form)
+
+```bash
+curl -X POST http://localhost:3000/document-drafter/draft-from-prompt \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Mutual NDA for Partnership Discussions",
+    "userPrompt": "Create a mutual non-disclosure agreement between two companies for sharing confidential information about a potential partnership. Include standard clauses for definition of confidential information, obligations, term duration (2 years), and governing law (Germany). The parties are TechCorp GmbH and InnovateLabs AG.",
+    "description": "NDA for exploring business partnership opportunities",
+    "projectId": "proj_123"
+  }'
+```
+
+Response:
+```json
+{
+  "id": "draft_123",
+  "userId": "user_123",
+  "title": "Mutual NDA for Partnership Discussions",
+  "userPrompt": "Create a mutual non-disclosure agreement...",
+  "generatedContent": "# MUTUAL NON-DISCLOSURE AGREEMENT\n\nThis Mutual Non-Disclosure Agreement...",
+  "status": "DRAFT",
+  "aiModel": "gpt-4",
+  "tokensUsed": 3500,
+  "projectId": "proj_123",
+  "createdAt": "2025-11-16T10:00:00Z"
+}
+```
+
+#### Draft Document from Template
+
+```bash
+curl -X POST http://localhost:3000/document-drafter/draft-from-template \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "templateId": "tpl_123",
+    "title": "Software Development Agreement - Mobile App Project",
+    "variables": {
+      "agreement_date": "2025-11-16",
+      "client_name": "TechStartup GmbH",
+      "client_address": "Hauptstraße 123\n10115 Berlin\nGermany",
+      "developer_name": "CodeCraft Solutions",
+      "developer_address": "Friedrichstraße 45\n10117 Berlin\nGermany",
+      "project_description": "Development of a cross-platform mobile application for inventory management with real-time synchronization, barcode scanning, and analytics dashboard.",
+      "total_price": "75000",
+      "deposit_amount": "22500",
+      "milestone_amount": "30000",
+      "final_amount": "22500",
+      "start_date": "2025-12-01",
+      "end_date": "2026-06-30",
+      "ip_clause": "Upon full payment, all intellectual property rights, including source code, designs, and documentation, shall transfer to the Client.",
+      "confidentiality_period": "5",
+      "termination_clause": "Either party may terminate this agreement with 30 days written notice. Upon termination, the Client shall pay for all work completed up to the termination date.",
+      "governing_law": "Germany",
+      "signature_date": "2025-11-16"
+    }
+  }'
+```
+
+Response:
+```json
+{
+  "id": "draft_124",
+  "userId": "user_123",
+  "templateId": "tpl_123",
+  "title": "Software Development Agreement - Mobile App Project",
+  "variables": {...},
+  "generatedContent": "# SOFTWARE DEVELOPMENT AGREEMENT\n\nThis Agreement is made on 2025-11-16 between:\n\n**Client:** TechStartup GmbH...",
+  "status": "DRAFT",
+  "template": {
+    "id": "tpl_123",
+    "name": "Software Development Agreement",
+    "category": "CONTRACT"
+  },
+  "createdAt": "2025-11-16T10:00:00Z"
+}
+```
+
+#### Get All My Drafts
+
+```bash
+# Get all drafts
+curl -X GET http://localhost:3000/document-drafter \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by status
+curl -X GET "http://localhost:3000/document-drafter?status=DRAFT" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Get Draft by ID
+
+```bash
+curl -X GET http://localhost:3000/document-drafter/draft_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Update Draft
+
+```bash
+curl -X PATCH http://localhost:3000/document-drafter/draft_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Updated Title",
+    "status": "REVIEWING",
+    "generatedContent": "# UPDATED CONTENT\n\n..."
+  }'
+```
+
+#### Regenerate Draft (Prompt-based only)
+
+```bash
+curl -X POST http://localhost:3000/document-drafter/draft_123/regenerate \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newPrompt": "Create a more detailed mutual NDA with additional IP protection clauses and data privacy provisions compliant with GDPR."
+  }'
+```
+
+#### Save Draft to Workspace
+
+```bash
+curl -X POST http://localhost:3000/document-drafter/draft_123/save-to-workspace \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "proj_456"
+  }'
+```
+
+#### Delete Draft
+
+```bash
+curl -X DELETE http://localhost:3000/document-drafter/draft_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+---
+
+### AI Features Workflow Example
+
+This example shows a complete workflow using all three AI features:
+
+#### 1. Advisor creates a reusable template
+
+```bash
+# Advisor creates NDA template
+curl -X POST http://localhost:3000/templates \
+  -H "Authorization: Bearer $ADVISOR_TOKEN" \
+  -d '{
+    "name": "Standard NDA Template",
+    "category": "LEGAL_NOTICE",
+    "templateContent": "...",
+    "variables": [...],
+    "isPublic": true,
+    "price": 29.99
+  }'
+# Returns: template ID tpl_789
+```
+
+#### 2. Client analyzes an existing contract
+
+```bash
+# Client uploads contract for AI analysis
+curl -X POST http://localhost:3000/contract-analysis \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -d '{
+    "fileName": "vendor_contract.pdf",
+    "fileUrl": "https://storage.fitmelegal.com/contracts/vendor_123.pdf",
+    "fileSize": 425000,
+    "mimeType": "application/pdf"
+  }'
+# Returns: analysis ID analysis_456
+
+# Check analysis results
+curl -X GET http://localhost:3000/contract-analysis/analysis_456 \
+  -H "Authorization: Bearer $CLIENT_TOKEN"
+# Returns: Detailed analysis with risks, key terms, recommendations
+```
+
+#### 3. Client creates new document using advisor's template
+
+```bash
+# Client uses template to draft NDA
+curl -X POST http://localhost:3000/document-drafter/draft-from-template \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -d '{
+    "templateId": "tpl_789",
+    "variables": {
+      "party_a": "MyCompany GmbH",
+      "party_b": "Partner Corp",
+      "effective_date": "2025-12-01",
+      ...
+    }
+  }'
+# Returns: draft ID draft_789 with filled content
+```
+
+#### 4. Client reviews and saves to workspace
+
+```bash
+# Review the generated document
+curl -X GET http://localhost:3000/document-drafter/draft_789 \
+  -H "Authorization: Bearer $CLIENT_TOKEN"
+
+# Make edits if needed
+curl -X PATCH http://localhost:3000/document-drafter/draft_789 \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -d '{"status": "REVIEWING"}'
+
+# Finalize and save to project
+curl -X POST http://localhost:3000/document-drafter/draft_789/save-to-workspace \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -d '{"projectId": "proj_123"}'
+```
+
+#### 5. Share document with advisor for review
+
+```bash
+# Add advisor to project
+curl -X POST http://localhost:3000/projects/proj_123/members \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -d '{"memberId": "advisor_user_id"}'
+
+# Advisor can now access and comment on the document
+```
+
+---
+
+### AI Features Summary
+
+**Document Templates:**
+- Create reusable templates with variables
+- Public/private template marketplace
+- Template pricing for monetization
+- Variable validation and default values
+- Usage tracking
+
+**Contract Analysis:**
+- AI-powered contract review
+- Risk identification with severity levels
+- Key terms extraction
+- Obligation tracking for all parties
+- Actionable recommendations
+- Overall risk score
+
+**Document Drafter:**
+- Free-form AI document generation
+- Template-based document creation
+- Variable substitution
+- Draft versioning (DRAFT → REVIEWING → FINALIZED)
+- Regenerate with new prompts
+- Save to document workspace
+- Export to various formats (future)
+
+**Integration Points:**
+- Templates can be used in Document Drafter
+- Drafted documents can be saved to Projects
+- Contract analyses can reference workspace documents
+- All features respect user ownership and access control
+
+**AI Models Supported:**
+- GPT-4 (OpenAI)
+- Claude 3 Opus (Anthropic)
+- Future: Custom fine-tuned models
+
+**Note:** Current implementation includes mock AI responses for development. In production, integrate with actual AI APIs (OpenAI, Claude, etc.) and implement PDF text extraction.
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -2417,6 +3042,35 @@ All 8 weeks of Phase 1 implementation are now complete:
 - Order-linked meetings (optional)
 - Transcription support (future)
 
+✅ **Phase 2 Month 5 Week 19-20**:
+- Project workspaces for document organization
+- Document management with version control
+- Automatic version numbering and tracking
+- PDF annotations with page and coordinates
+- Threaded comments with parent-child relationships
+- Project member management
+- Public/private project visibility
+- Archive functionality
+- Document upload with metadata
+- Change descriptions for versions
+- Access control (owner, members, public)
+
+✅ **Phase 2 Month 6 Week 21-22**:
+- Document templates with variable placeholders
+- Template marketplace (public/private)
+- Template pricing and monetization
+- AI-powered contract analysis
+- Risk identification with severity levels
+- Key terms extraction
+- Obligation tracking
+- AI-generated recommendations
+- Free-form AI document drafting
+- Template-based document generation
+- Draft versioning (DRAFT → REVIEWING → FINALIZED)
+- Save drafts to document workspace
+- Multiple AI model support (GPT-4, Claude)
+- Token usage tracking
+
 ---
 
 ## Phase 2 Progress! 🚀
@@ -2424,13 +3078,19 @@ All 8 weeks of Phase 1 implementation are now complete:
 **Phase 2 Focus:** Core Platform Expansion
 - ✅ Weeks 15-16: Subscription Plans
 - ✅ Weeks 17-18: Video Call Integration
+- ✅ Weeks 19-20: Document Workspace
+- ✅ Weeks 21-22: AI Features (Templates, Analysis, Drafter)
+
+**Completed:** Phase 2 Month 4-6 implementations complete!
 
 ## Next Steps
 
 **Future Features:**
 - Email verification
 - Password reset
-- File upload (avatars, documents)
+- File upload integration (S3/storage)
 - Advisor verification workflow (admin)
-- Document workspace (Phase 2 Weeks 19-20)
-- AI Features (Phase 2 Weeks 21-24)
+- Real-time collaboration on documents
+- Advanced search across platform
+- Analytics dashboard
+- Mobile app development

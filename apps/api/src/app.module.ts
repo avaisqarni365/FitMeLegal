@@ -17,6 +17,9 @@ import { SubscriptionsModule } from './modules/subscriptions/subscriptions.modul
 import { VideoMeetingsModule } from './modules/video-meetings/video-meetings.module';
 import { ProjectsModule } from './modules/projects/projects.module';
 import { DocumentsModule } from './modules/documents/documents.module';
+import { TemplatesModule } from './modules/templates/templates.module';
+import { ContractAnalysisModule } from './modules/contract-analysis/contract-analysis.module';
+import { DocumentDrafterModule } from './modules/document-drafter/document-drafter.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -46,6 +49,9 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     VideoMeetingsModule,
     ProjectsModule,
     DocumentsModule,
+    TemplatesModule,
+    ContractAnalysisModule,
+    DocumentDrafterModule,
   ],
   providers: [
     {
