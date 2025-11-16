@@ -44,6 +44,8 @@ model User {
   contractAnalyses     ContractAnalysis[]
   draftedDocuments     DraftedDocument[]
   adminLogs            AuditLog[]
+  emailPreferences     EmailPreferences?
+  emailLogs            EmailLog[]
 
   @@index([email])
   @@index([role])
@@ -660,6 +662,66 @@ model AuditLog {
   @@map("audit_logs")
 }
 
+model EmailPreferences {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Notification preferences
+  orderUpdates           Boolean  @default(true) @map("order_updates")
+  questionAnswers        Boolean  @default(true) @map("question_answers")
+  newMessages            Boolean  @default(true) @map("new_messages")
+  meetingReminders       Boolean  @default(true) @map("meeting_reminders")
+  subscriptionUpdates    Boolean  @default(true) @map("subscription_updates")
+  marketingEmails        Boolean  @default(false) @map("marketing_emails")
+  weeklyDigest           Boolean  @default(false) @map("weekly_digest")
+  advisorApplications    Boolean  @default(true) @map("advisor_applications") // For admins
+  platformNotifications  Boolean  @default(true) @map("platform_notifications")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("email_preferences")
+}
+
+model EmailLog {
+  id          String       @id @default(uuid())
+  userId      String       @map("user_id")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  emailType   EmailType    @map("email_type")
+  recipientEmail String    @map("recipient_email")
+  subject     String
+
+  // Email content
+  templateId  String?      @map("template_id")
+  variables   Json?        @default("{}")
+
+  // Delivery status
+  status      EmailStatus  @default(PENDING)
+  sentAt      DateTime?    @map("sent_at")
+  deliveredAt DateTime?    @map("delivered_at")
+  openedAt    DateTime?    @map("opened_at")
+  clickedAt   DateTime?    @map("clicked_at")
+
+  // Error tracking
+  errorMessage String?     @map("error_message") @db.Text
+  retryCount   Int         @default(0) @map("retry_count")
+
+  // Provider info
+  provider     String?     // "sendgrid", "ses", "smtp"
+  providerId   String?     @map("provider_id") // External message ID
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([emailType])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("email_logs")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -825,4 +887,61 @@ enum AdminAction {
 
   // Other
   OTHER
+}
+
+enum EmailType {
+  // Authentication
+  WELCOME
+  EMAIL_VERIFICATION
+  PASSWORD_RESET
+
+  // Orders
+  ORDER_CREATED
+  ORDER_CONFIRMED
+  ORDER_COMPLETED
+  ORDER_CANCELLED
+
+  // Questions & Answers
+  QUESTION_ANSWERED
+  ANSWER_ACCEPTED
+
+  // Messages
+  NEW_MESSAGE
+
+  // Meetings
+  MEETING_SCHEDULED
+  MEETING_REMINDER
+  MEETING_CANCELLED
+  MEETING_COMPLETED
+
+  // Subscriptions
+  SUBSCRIPTION_CREATED
+  SUBSCRIPTION_RENEWED
+  SUBSCRIPTION_CANCELLED
+  SUBSCRIPTION_PAYMENT_FAILED
+
+  // Advisor
+  ADVISOR_APPLICATION_SUBMITTED
+  ADVISOR_APPROVED
+  ADVISOR_REJECTED
+
+  // Admin
+  ADMIN_NOTIFICATION
+
+  // Marketing
+  MARKETING_CAMPAIGN
+  WEEKLY_DIGEST
+
+  // Other
+  OTHER
+}
+
+enum EmailStatus {
+  PENDING
+  SENT
+  DELIVERED
+  OPENED
+  CLICKED
+  BOUNCED
+  FAILED
 }

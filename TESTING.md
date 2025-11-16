@@ -3618,6 +3618,164 @@ All 8 weeks of Phase 1 implementation are now complete:
 
 **Completed:** Phase 2 Complete! All 6 months of enhancements delivered.
 
+---
+
+## Email Notifications (Phase 3 Week 1)
+
+The Email Notification system provides automated email communication for user engagement and platform updates.
+
+### Email Preferences
+
+#### Get My Email Preferences
+
+```bash
+curl -X GET http://localhost:3000/email/preferences \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+{
+  "id": "pref_123",
+  "userId": "user_123",
+  "orderUpdates": true,
+  "questionAnswers": true,
+  "newMessages": true,
+  "meetingReminders": true,
+  "subscriptionUpdates": true,
+  "marketingEmails": false,
+  "weeklyDigest": false,
+  "advisorApplications": true,
+  "platformNotifications": true,
+  "createdAt": "2025-11-16T10:00:00Z",
+  "updatedAt": "2025-11-16T10:00:00Z"
+}
+```
+
+#### Update Email Preferences
+
+```bash
+curl -X PATCH http://localhost:3000/email/preferences \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "marketingEmails": true,
+    "weeklyDigest": true,
+    "meetingReminders": false
+  }'
+```
+
+#### Get Email Logs
+
+```bash
+curl -X GET http://localhost:3000/email/logs \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response shows history of emails sent to the user with delivery status.
+
+### Email Types
+
+The system supports the following email notifications:
+
+**Authentication:**
+- WELCOME - User registration welcome email
+- EMAIL_VERIFICATION - Email verification link
+- PASSWORD_RESET - Password reset instructions
+
+**Orders:**
+- ORDER_CREATED - Order placed confirmation
+- ORDER_CONFIRMED - Order confirmed by advisor
+- ORDER_COMPLETED - Order completion notification
+- ORDER_CANCELLED - Order cancellation notice
+
+**Questions & Answers:**
+- QUESTION_ANSWERED - New answer on your question
+- ANSWER_ACCEPTED - Your answer was accepted
+
+**Messages:**
+- NEW_MESSAGE - New direct message received
+
+**Meetings:**
+- MEETING_SCHEDULED - Meeting scheduled confirmation
+- MEETING_REMINDER - Meeting reminder (24h before)
+- MEETING_CANCELLED - Meeting cancellation notice
+- MEETING_COMPLETED - Meeting completion summary
+
+**Subscriptions:**
+- SUBSCRIPTION_CREATED - New subscription activated
+- SUBSCRIPTION_RENEWED - Subscription renewed
+- SUBSCRIPTION_CANCELLED - Subscription cancelled
+- SUBSCRIPTION_PAYMENT_FAILED - Payment failure alert
+
+**Advisor:**
+- ADVISOR_APPLICATION_SUBMITTED - Application received
+- ADVISOR_APPROVED - Application approved
+- ADVISOR_REJECTED - Application rejected
+
+**Marketing:**
+- MARKETING_CAMPAIGN - Marketing emails
+- WEEKLY_DIGEST - Weekly platform updates
+
+### Email Service Integration
+
+**Current Implementation:**
+- Mock email provider (logs to console)
+- User preference checking
+- Email logging with delivery tracking
+- HTML email templates
+
+**Production Integration:**
+To integrate with a real email provider:
+
+1. **SendGrid:**
+```typescript
+import sgMail from '@sendgrid/mail';
+sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+
+await sgMail.send({
+  to: email,
+  from: 'noreply@fitmelegal.com',
+  subject: subject,
+  html: html,
+});
+```
+
+2. **AWS SES:**
+```typescript
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
+
+const ses = new SESClient({ region: 'eu-central-1' });
+await ses.send(new SendEmailCommand({
+  Source: 'noreply@fitmelegal.com',
+  Destination: { ToAddresses: [email] },
+  Message: {
+    Subject: { Data: subject },
+    Body: { Html: { Data: html } },
+  },
+}));
+```
+
+### Features
+
+- **User Preferences:** Granular control over email types
+- **Email Logging:** Track all sent emails with delivery status
+- **Template Engine:** HTML email templates with variables
+- **Provider Agnostic:** Easy to integrate any email service
+- **Retry Logic:** Built-in error handling and retry capability
+- **Delivery Tracking:** Monitor sent, delivered, opened, clicked status
+
+### Email Templates
+
+Templates included:
+- Welcome email with platform introduction
+- Order confirmation with order details
+- Meeting reminders with join links
+
+All templates use responsive HTML with inline CSS for maximum compatibility.
+
+---
+
 ## Next Steps
 
 **Future Features:**

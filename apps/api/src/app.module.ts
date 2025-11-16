@@ -22,6 +22,7 @@ import { ContractAnalysisModule } from './modules/contract-analysis/contract-ana
 import { DocumentDrafterModule } from './modules/document-drafter/document-drafter.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
+import { EmailModule } from './modules/email/email.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -56,6 +57,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     DocumentDrafterModule,
     AdminModule,
     AnalyticsModule,
+    EmailModule,
   ],
   providers: [
     {
