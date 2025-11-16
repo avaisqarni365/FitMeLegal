@@ -1,6 +1,6 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { LoggerModule } from './common/logger/logger.module';
@@ -35,6 +35,7 @@ import { NotificationsModule } from './modules/notifications/notifications.modul
 import { SearchModule } from './modules/search/search.module';
 import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
+import { EnhancedThrottlerGuard } from './common/guards/throttler.guard';
 
 @Module({
   imports: [
@@ -44,8 +45,19 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     }),
     ThrottlerModule.forRoot([
       {
+        name: 'short',
+        ttl: 1000, // 1 second
+        limit: 10, // 10 requests per second
+      },
+      {
+        name: 'medium',
+        ttl: 10000, // 10 seconds
+        limit: 50, // 50 requests per 10 seconds
+      },
+      {
+        name: 'long',
         ttl: 60000, // 1 minute
-        limit: 100, // 100 requests per minute
+        limit: 200, // 200 requests per minute
       },
     ]),
     PrismaModule,
@@ -81,6 +93,11 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     {
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useFactory: (logger: LoggerService) => new EnhancedThrottlerGuard(logger),
+      inject: [LoggerService],
     },
     {
       provide: APP_FILTER,

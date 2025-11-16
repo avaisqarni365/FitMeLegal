@@ -1,42 +1,43 @@
-# OPTIONAL: Docker Compose for Local Development
+# Docker Compose for FitMeLegal Platform
 #
-# This file is OPTIONAL. You can use your local PostgreSQL installation instead.
-# Only use this if you prefer Docker over local services.
+# Development: docker-compose up -d
+# Production: docker-compose -f docker-compose.prod.yml up -d
 #
-# To use Docker:
-#   docker-compose up -d
-#
-# To use local services:
-#   Install PostgreSQL locally and update apps/api/.env with your credentials
+# For local development, you can also use local PostgreSQL/Redis
+# and update apps/api/.env with your credentials
 
 version: '3.8'
 
 services:
+  # PostgreSQL Database
   postgres:
     image: postgres:16-alpine
     container_name: fitmelegal-postgres
     restart: unless-stopped
-    ports:
-      - '5432:5432'
     environment:
-      POSTGRES_USER: fitmelegal
-      POSTGRES_PASSWORD: fitmelegal_dev_password
-      POSTGRES_DB: fitmelegal_dev
+      POSTGRES_USER: ${POSTGRES_USER:-fitmelegal}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-fitmelegal_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-fitmelegal_dev}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U fitmelegal']
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-fitmelegal}']
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - fitmelegal-network
 
+  # Redis (for caching and sessions)
   redis:
     image: redis:7-alpine
     container_name: fitmelegal-redis
     restart: unless-stopped
+    command: redis-server --appendonly yes ${REDIS_PASSWORD:+--requirepass $REDIS_PASSWORD}
     ports:
-      - '6379:6379'
-    command: redis-server --appendonly yes
+      - '${REDIS_PORT:-6379}:6379'
     volumes:
       - redis_data:/data
     healthcheck:
@@ -44,7 +45,15 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - fitmelegal-network
+
+networks:
+  fitmelegal-network:
+    driver: bridge
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local

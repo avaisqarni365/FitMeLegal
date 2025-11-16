@@ -1,0 +1,33 @@
+# Dependencies
+node_modules
+npm-debug.log
+
+# Testing
+coverage
+.nyc_output
+test
+*.spec.ts
+*.test.ts
+
+# Development
+.env*
+!.env.production
+.git
+.gitignore
+README.md
+.vscode
+.idea
+
+# Build artifacts
+dist
+build
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Misc
+*.md
+!PRODUCTION.md
+docs
