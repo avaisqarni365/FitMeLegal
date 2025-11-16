@@ -387,6 +387,260 @@ This will:
 
 ---
 
+## Fixed-Price Services
+
+### List All Services (Public)
+```bash
+# Basic listing
+curl http://localhost:3001/api/services
+
+# With filters
+curl "http://localhost:3001/api/services?category=LEGAL&subcategory=contract-review&minRating=4.5&maxPrice=200&page=1&limit=10"
+```
+
+**Available filters:**
+- `category` - LEGAL or TAX
+- `subcategory` - e.g., contract-review, employment, personal-tax
+- `language` - e.g., en, de, fr
+- `minRating` - minimum average rating (0-5)
+- `maxPrice` - maximum price
+- `maxDeliveryTime` - maximum delivery time in days
+- `search` - search in title and description
+- `featured` - show only featured services
+- `page` - page number (default: 1)
+- `limit` - items per page (default: 20)
+- `sortBy` - createdAt, price, averageRating, or totalOrders
+- `sortOrder` - asc or desc
+
+### Get Service by ID (Public)
+```bash
+curl http://localhost:3001/api/services/SERVICE_ID
+```
+
+### Create Service (Advisor Only)
+```bash
+# Login as advisor first
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "michael.lawyer@example.com",
+    "password": "advisor123"
+  }'
+
+# Create service (save the accessToken from login)
+curl -X POST http://localhost:3001/api/services \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "category": "LEGAL",
+    "subcategory": "contract-review",
+    "title": "Shareholder Agreement Review",
+    "description": "Comprehensive review of shareholder agreements with focus on voting rights, transfer restrictions, and exit provisions.",
+    "price": 300.0,
+    "currency": "EUR",
+    "deliveryTime": 5,
+    "revisions": 2,
+    "requirements": [
+      "Current shareholder agreement",
+      "Company structure details",
+      "Specific concerns"
+    ],
+    "deliverables": [
+      "Detailed review report",
+      "Recommendations document",
+      "60-minute consultation"
+    ],
+    "languages": ["en", "de"],
+    "tags": ["corporate", "shareholders", "governance"]
+  }'
+```
+
+### Get My Services (Advisor Only)
+```bash
+curl http://localhost:3001/api/services/my-services \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+```
+
+### Update Service (Owner Only)
+```bash
+curl -X PATCH http://localhost:3001/api/services/SERVICE_ID \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "price": 350.0,
+    "deliveryTime": 4,
+    "active": true
+  }'
+```
+
+### Delete Service (Owner Only)
+```bash
+curl -X DELETE http://localhost:3001/api/services/SERVICE_ID \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+```
+
+**Note:** Cannot delete services with active orders.
+
+---
+
+## Orders & Bookings
+
+### Create Order (Client Only)
+```bash
+# Login as client first
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.client@example.com",
+    "password": "client123"
+  }'
+
+# Create order for a service
+curl -X POST http://localhost:3001/api/orders/service/SERVICE_ID \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "requirements": {
+      "documentUrl": "https://example.com/contract.pdf",
+      "additionalInfo": "Please review the non-compete clause carefully"
+    },
+    "notes": "I need this reviewed before signing next Monday"
+  }'
+```
+
+### Get My Orders (Client or Advisor)
+```bash
+# Clients see their orders, Advisors see orders for their services
+curl http://localhost:3001/api/orders \
+  -H "Authorization: Bearer YOUR_TOKEN"
+
+# With filters
+curl "http://localhost:3001/api/orders?status=IN_PROGRESS&page=1&limit=10" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+**Order statuses:**
+- `PENDING` - Waiting for advisor confirmation
+- `CONFIRMED` - Advisor confirmed, ready to start
+- `IN_PROGRESS` - Work in progress
+- `REVISION_REQUESTED` - Client requested changes
+- `COMPLETED` - Deliverables submitted
+- `CANCELLED` - Order cancelled
+- `DISPUTED` - Dispute raised
+
+### Get Order by ID
+```bash
+curl http://localhost:3001/api/orders/ORDER_ID \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+### Confirm Order (Advisor Only)
+```bash
+# Advisor confirms they accept the order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/confirm \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+```
+
+### Start Order (Advisor Only)
+```bash
+# Advisor starts working on the order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/start \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+```
+
+### Submit Deliverables (Advisor Only)
+```bash
+# Advisor submits completed work
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/submit-deliverables \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "deliverables": [
+      "https://example.com/review-report.pdf",
+      "https://example.com/recommendations.pdf"
+    ]
+  }'
+```
+
+This marks the order as COMPLETED.
+
+### Request Revision (Client Only)
+```bash
+# Client requests changes to deliverables
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/request-revision \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Please add more details about the termination clause"
+  }'
+```
+
+**Note:** Only available if service includes revisions and limit not reached.
+
+### Complete Order (Client Only)
+```bash
+# Client accepts deliverables and completes the order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/complete \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+This triggers payment processing and updates advisor/service statistics.
+
+### Cancel Order (Client or Advisor)
+```bash
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/cancel \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Client no longer needs the service"
+  }'
+```
+
+**Note:** Cannot cancel COMPLETED orders.
+
+---
+
+## Order Workflow Example
+
+### Full Order Lifecycle
+```bash
+# 1. Client browses services
+curl http://localhost:3001/api/services?category=LEGAL
+
+# 2. Client creates order
+curl -X POST http://localhost:3001/api/orders/service/service-1 \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"requirements": {"document": "contract.pdf"}, "notes": "Urgent"}'
+
+# 3. Advisor confirms order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/confirm \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 4. Advisor starts work
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/start \
+  -H "Authorization: Bearer ADVISOR_TOKEN"
+
+# 5. Advisor submits deliverables
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/submit-deliverables \
+  -H "Authorization: Bearer ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"deliverables": ["review.pdf"]}'
+
+# 6. Client reviews and either:
+#    a) Requests revision
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/request-revision \
+  -H "Authorization: Bearer CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"reason": "Need more detail"}'
+
+#    b) Completes order
+curl -X POST http://localhost:3001/api/orders/ORDER_ID/complete \
+  -H "Authorization: Bearer CLIENT_TOKEN"
+```
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -425,10 +679,33 @@ npm run prisma:seed
 
 ---
 
+## Completed Features
+
+✅ **Phase 1 Month 1** (Weeks 1-4):
+- Week 1: Project setup, database schema, Prisma
+- Week 2: Authentication & JWT
+- Week 3: User profiles & Advisor management
+- Week 4: Questions & Answers marketplace
+
+✅ **Phase 1 Month 2 Week 5**:
+- Fixed-price services marketplace
+- Order booking workflow
+- Service management for advisors
+- Complete order lifecycle (PENDING → COMPLETED)
+- Revision system
+
 ## Next Steps
 
-- Week 4: Questions & Answers marketplace
+**Phase 1 Month 2** (Remaining):
+- Week 6: Payment integration with Stripe
+- Week 7: Messaging & real-time communication
+- Week 8: Reviews & ratings system
+
+**Future Features:**
 - Email verification
 - Password reset
 - File upload (avatars, documents)
 - Advisor verification workflow (admin)
+- Video call integration
+- Document workspace
+- Subscription plans

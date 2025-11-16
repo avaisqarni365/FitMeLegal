@@ -8,6 +8,8 @@ import { UsersModule } from './modules/users/users.module';
 import { AdvisorsModule } from './modules/advisors/advisors.module';
 import { QuestionsModule } from './modules/questions/questions.module';
 import { AnswersModule } from './modules/answers/answers.module';
+import { ServicesModule } from './modules/services/services.module';
+import { OrdersModule } from './modules/orders/orders.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -28,6 +30,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AdvisorsModule,
     QuestionsModule,
     AnswersModule,
+    ServicesModule,
+    OrdersModule,
   ],
   providers: [
     {

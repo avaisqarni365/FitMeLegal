@@ -219,7 +219,236 @@ async function main() {
   });
   console.log('✅ Dual advisor created:', dual1User.email);
 
-  console.log('✨ Seed completed successfully!');
+  // Create sample services
+  console.log('\n📦 Creating sample services...');
+
+  // Services for Lawyer 1 (Michael - Corporate Law)
+  const service1 = await prisma.service.upsert({
+    where: { id: 'service-1' },
+    update: {},
+    create: {
+      id: 'service-1',
+      advisorId: lawyer1.id,
+      category: 'LEGAL',
+      subcategory: 'contract-review',
+      title: 'Employment Contract Review',
+      description:
+        'Comprehensive review of your employment contract with detailed analysis of key terms, potential issues, and recommendations. I will examine compensation, benefits, non-compete clauses, intellectual property rights, termination conditions, and more.',
+      price: 150.0,
+      currency: 'EUR',
+      deliveryTime: 3,
+      revisions: 1,
+      requirements: [
+        'Copy of employment contract (PDF)',
+        'Any amendments or addendums',
+        'Specific concerns or questions',
+      ],
+      deliverables: [
+        'Detailed review document (5-10 pages)',
+        'Summary of key findings',
+        '30-minute video consultation',
+      ],
+      languages: ['en', 'de'],
+      tags: ['employment', 'contract-review', 'labor-law'],
+      featured: true,
+      active: true,
+      averageRating: 4.9,
+      totalReviews: 15,
+    },
+  });
+
+  const service2 = await prisma.service.upsert({
+    where: { id: 'service-2' },
+    update: {},
+    create: {
+      id: 'service-2',
+      advisorId: lawyer1.id,
+      category: 'LEGAL',
+      subcategory: 'contracts',
+      title: 'NDA Drafting Service',
+      description:
+        'Professional drafting of Non-Disclosure Agreements (NDAs) tailored to your specific needs. Includes mutual or one-way NDAs for employees, contractors, business partners, or investors.',
+      price: 200.0,
+      currency: 'EUR',
+      deliveryTime: 5,
+      revisions: 2,
+      requirements: [
+        'Type of NDA needed (mutual/one-way)',
+        'Parties involved',
+        'Specific terms or clauses required',
+        'Jurisdiction preference',
+      ],
+      deliverables: [
+        'Customized NDA document (Word & PDF)',
+        'Explanation of key clauses',
+        'Revision support',
+      ],
+      languages: ['en', 'de'],
+      tags: ['nda', 'contracts', 'corporate', 'confidentiality'],
+      active: true,
+      averageRating: 4.8,
+      totalReviews: 22,
+    },
+  });
+
+  // Services for Lawyer 2 (Sarah - Employment Law)
+  const service3 = await prisma.service.upsert({
+    where: { id: 'service-3' },
+    update: {},
+    create: {
+      id: 'service-3',
+      advisorId: lawyer2.id,
+      category: 'LEGAL',
+      subcategory: 'employment',
+      title: 'Termination Letter Review & Response',
+      description:
+        'Expert review of your termination letter with guidance on your rights, potential claims, and next steps. I will help you understand severance terms, notice periods, and settlement offers.',
+      price: 120.0,
+      currency: 'EUR',
+      deliveryTime: 2,
+      revisions: 1,
+      requirements: [
+        'Termination letter',
+        'Employment contract',
+        'Company handbook (if available)',
+      ],
+      deliverables: [
+        'Analysis of termination terms',
+        'Assessment of legal rights',
+        'Recommended response strategy',
+        'Draft response letter (if needed)',
+      ],
+      languages: ['en', 'fr'],
+      tags: ['employment', 'termination', 'labor-law', 'severance'],
+      featured: true,
+      active: true,
+      averageRating: 5.0,
+      totalReviews: 18,
+    },
+  });
+
+  // Services for Tax Advisor (David)
+  const service4 = await prisma.service.upsert({
+    where: { id: 'service-4' },
+    update: {},
+    create: {
+      id: 'service-4',
+      advisorId: tax1.id,
+      category: 'TAX',
+      subcategory: 'personal-tax',
+      title: 'Personal Tax Return Preparation',
+      description:
+        'Complete preparation and filing of your personal income tax return (Einkommensteuererklärung) for Germany. Maximize deductions and ensure compliance with all regulations.',
+      price: 180.0,
+      currency: 'EUR',
+      deliveryTime: 7,
+      revisions: 1,
+      requirements: [
+        'Annual income statements (Lohnsteuerbescheinigung)',
+        'Bank statements and investment income',
+        'Receipts for deductible expenses',
+        'Previous year tax return (if available)',
+      ],
+      deliverables: [
+        'Completed tax return',
+        'Electronic filing with tax office',
+        'Tax optimization report',
+        'Support until assessment received',
+      ],
+      languages: ['de', 'en'],
+      tags: ['personal-tax', 'tax-return', 'germany', 'einkommensteuer'],
+      featured: true,
+      active: true,
+      averageRating: 4.8,
+      totalReviews: 45,
+    },
+  });
+
+  const service5 = await prisma.service.upsert({
+    where: { id: 'service-5' },
+    update: {},
+    create: {
+      id: 'service-5',
+      advisorId: tax1.id,
+      category: 'TAX',
+      subcategory: 'business-tax',
+      title: 'Freelancer Tax Advisory Package',
+      description:
+        'Comprehensive tax advisory for freelancers and self-employed professionals. Includes quarterly planning, expense optimization, and VAT guidance.',
+      price: 250.0,
+      currency: 'EUR',
+      deliveryTime: 5,
+      revisions: 2,
+      requirements: [
+        'Business income overview',
+        'Expense records',
+        'Current tax situation',
+        'Business structure details',
+      ],
+      deliverables: [
+        'Tax planning strategy',
+        'Quarterly tax estimate',
+        'Deduction optimization guide',
+        'VAT compliance checklist',
+        '60-minute consultation',
+      ],
+      languages: ['de', 'en'],
+      tags: ['freelancer', 'business-tax', 'self-employed', 'tax-planning'],
+      active: true,
+      averageRating: 4.9,
+      totalReviews: 31,
+    },
+  });
+
+  // Services for Dual Advisor (Emma)
+  const service6 = await prisma.service.upsert({
+    where: { id: 'service-6' },
+    update: {},
+    create: {
+      id: 'service-6',
+      advisorId: dual1.id,
+      category: 'LEGAL',
+      subcategory: 'corporate',
+      title: 'Business Formation & Tax Structure',
+      description:
+        'Complete legal and tax advisory for starting your business in Germany. I will help you choose the right legal structure (GmbH, UG, AG, etc.) and optimize your tax position.',
+      price: 500.0,
+      currency: 'EUR',
+      deliveryTime: 10,
+      revisions: 3,
+      requirements: [
+        'Business plan overview',
+        'Expected revenue and expenses',
+        'Number of founders',
+        'Financing structure',
+        'Industry and business model',
+      ],
+      deliverables: [
+        'Legal structure recommendation',
+        'Tax optimization strategy',
+        'Founders agreement template',
+        'Articles of incorporation draft',
+        'Tax registration guide',
+        '90-minute consultation',
+      ],
+      languages: ['de', 'en', 'fr'],
+      tags: [
+        'business-formation',
+        'gmbh',
+        'corporate',
+        'tax-structure',
+        'startup',
+      ],
+      featured: true,
+      active: true,
+      averageRating: 5.0,
+      totalReviews: 28,
+    },
+  });
+
+  console.log('✅ Created 6 sample services');
+
+  console.log('\n✨ Seed completed successfully!');
   console.log('\n📝 Sample Login Credentials:');
   console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
   console.log('Admin:');

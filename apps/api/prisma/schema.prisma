@@ -30,6 +30,7 @@ model User {
   questions Question[]
   answers   Answer[]
   reviews   Review[]
+  orders    Order[]
 
   @@index([email])
   @@index([role])
@@ -62,8 +63,9 @@ model Advisor {
   createdAt             DateTime           @default(now()) @map("created_at")
   updatedAt             DateTime           @updatedAt @map("updated_at")
 
-  answers Answer[]
-  reviews Review[]
+  answers  Answer[]
+  reviews  Review[]
+  services Service[]
 
   @@index([advisorType])
   @@index([rating(sort: Desc)])
@@ -136,6 +138,74 @@ model Review {
   @@map("reviews")
 }
 
+model Service {
+  id                String          @id @default(uuid())
+  advisorId         String          @map("advisor_id")
+  advisor           Advisor         @relation(fields: [advisorId], references: [id], onDelete: Cascade)
+  category          ServiceCategory
+  subcategory       String
+  title             String
+  description       String          @db.Text
+  price             Decimal         @db.Decimal(10, 2)
+  currency          String          @default("EUR")
+  deliveryTime      Int             @map("delivery_time") // in days
+  revisions         Int             @default(0) // number of revisions included
+  requirements      Json            @default("[]") // what client needs to provide
+  deliverables      Json            @default("[]") // what advisor will deliver
+  languages         Json            @default("[]")
+  tags              Json            @default("[]")
+  featured          Boolean         @default(false)
+  active            Boolean         @default(true)
+  totalOrders       Int             @default(0) @map("total_orders")
+  totalRevenue      Decimal         @default(0.0) @map("total_revenue") @db.Decimal(12, 2)
+  averageRating     Decimal         @default(0.0) @map("average_rating") @db.Decimal(3, 2)
+  totalReviews      Int             @default(0) @map("total_reviews")
+  viewCount         Int             @default(0) @map("view_count")
+  lastOrderAt       DateTime?       @map("last_order_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@index([advisorId])
+  @@index([category])
+  @@index([active])
+  @@index([featured])
+  @@index([createdAt(sort: Desc)])
+  @@map("services")
+}
+
+model Order {
+  id                String      @id @default(uuid())
+  serviceId         String      @map("service_id")
+  service           Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  clientId          String      @map("client_id")
+  client            User        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  status            OrderStatus @default(PENDING)
+  price             Decimal     @db.Decimal(10, 2)
+  currency          String      @default("EUR")
+  requirements      Json        @default("{}") // client's specific requirements
+  deliverables      Json        @default("[]") // uploaded deliverables
+  revisionCount     Int         @default(0) @map("revision_count")
+  notes             String?     @db.Text
+  dueDate           DateTime?   @map("due_date")
+  completedAt       DateTime?   @map("completed_at")
+  cancelledAt       DateTime?   @map("cancelled_at")
+  cancellationBy    String?     @map("cancellation_by") // userId who cancelled
+  cancellationReason String?    @map("cancellation_reason") @db.Text
+  paymentStatus     PaymentStatus @default(PENDING) @map("payment_status")
+  paymentId         String?     @map("payment_id") // Stripe payment intent ID
+  paidAt            DateTime?   @map("paid_at")
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+
+  @@index([serviceId])
+  @@index([clientId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("orders")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -196,4 +266,27 @@ enum AnswerStatus {
   PENDING
   ACCEPTED
   REJECTED
+}
+
+enum ServiceCategory {
+  LEGAL
+  TAX
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  REVISION_REQUESTED
+  COMPLETED
+  CANCELLED
+  DISPUTED
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  REFUNDED
 }
