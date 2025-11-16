@@ -161,6 +161,176 @@ export class StripeService implements OnModuleInit {
   }
 
   /**
+   * Create or get a Stripe customer
+   */
+  async createOrGetCustomer(
+    email: string,
+    userId: string,
+    name?: string,
+  ): Promise<Stripe.Customer> {
+    try {
+      // Try to find existing customer
+      const customers = await this.stripe.customers.list({
+        email,
+        limit: 1,
+      });
+
+      if (customers.data.length > 0) {
+        this.logger.log(`Existing customer found: ${customers.data[0].id}`);
+        return customers.data[0];
+      }
+
+      // Create new customer
+      const customer = await this.stripe.customers.create({
+        email,
+        name,
+        metadata: { userId },
+      });
+
+      this.logger.log(`New customer created: ${customer.id}`);
+      return customer;
+    } catch (error) {
+      this.logger.error('Failed to create/get customer:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Create a subscription
+   */
+  async createSubscription(params: {
+    customerId: string;
+    priceId: string;
+    paymentMethodId?: string;
+    trialPeriodDays?: number;
+    metadata?: Record<string, string>;
+  }): Promise<Stripe.Subscription> {
+    try {
+      const { customerId, priceId, paymentMethodId, trialPeriodDays, metadata } = params;
+
+      // Attach payment method if provided
+      if (paymentMethodId) {
+        await this.stripe.paymentMethods.attach(paymentMethodId, {
+          customer: customerId,
+        });
+
+        await this.stripe.customers.update(customerId, {
+          invoice_settings: {
+            default_payment_method: paymentMethodId,
+          },
+        });
+      }
+
+      const subscription = await this.stripe.subscriptions.create({
+        customer: customerId,
+        items: [{ price: priceId }],
+        trial_period_days: trialPeriodDays,
+        metadata,
+        expand: ['latest_invoice.payment_intent'],
+      });
+
+      this.logger.log(`Subscription created: ${subscription.id}`);
+      return subscription;
+    } catch (error) {
+      this.logger.error('Failed to create subscription:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Update a subscription (upgrade/downgrade)
+   */
+  async updateSubscription(
+    subscriptionId: string,
+    newPriceId: string,
+  ): Promise<Stripe.Subscription> {
+    try {
+      const subscription = await this.stripe.subscriptions.retrieve(subscriptionId);
+
+      const updatedSubscription = await this.stripe.subscriptions.update(
+        subscriptionId,
+        {
+          items: [
+            {
+              id: subscription.items.data[0].id,
+              price: newPriceId,
+            },
+          ],
+          proration_behavior: 'always_invoice',
+        },
+      );
+
+      this.logger.log(`Subscription updated: ${subscriptionId}`);
+      return updatedSubscription;
+    } catch (error) {
+      this.logger.error('Failed to update subscription:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Cancel a subscription
+   */
+  async cancelSubscription(
+    subscriptionId: string,
+    cancelAtPeriodEnd: boolean = true,
+  ): Promise<Stripe.Subscription> {
+    try {
+      if (cancelAtPeriodEnd) {
+        const subscription = await this.stripe.subscriptions.update(
+          subscriptionId,
+          {
+            cancel_at_period_end: true,
+          },
+        );
+        this.logger.log(`Subscription will cancel at period end: ${subscriptionId}`);
+        return subscription;
+      } else {
+        const subscription = await this.stripe.subscriptions.cancel(subscriptionId);
+        this.logger.log(`Subscription cancelled immediately: ${subscriptionId}`);
+        return subscription;
+      }
+    } catch (error) {
+      this.logger.error('Failed to cancel subscription:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get subscription by ID
+   */
+  async getSubscription(subscriptionId: string): Promise<Stripe.Subscription> {
+    return this.stripe.subscriptions.retrieve(subscriptionId);
+  }
+
+  /**
+   * Create a price for a product
+   */
+  async createPrice(params: {
+    productId: string;
+    unitAmount: number;
+    currency: string;
+    recurring: {
+      interval: 'month' | 'year';
+    };
+  }): Promise<Stripe.Price> {
+    try {
+      const price = await this.stripe.prices.create({
+        product: params.productId,
+        unit_amount: Math.round(params.unitAmount * 100),
+        currency: params.currency.toLowerCase(),
+        recurring: params.recurring,
+      });
+
+      this.logger.log(`Price created: ${price.id}`);
+      return price;
+    } catch (error) {
+      this.logger.error('Failed to create price:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Create a test payment intent (for development/testing)
    */
   async createTestPaymentIntent(

@@ -1368,6 +1368,279 @@ curl -X PATCH http://localhost:3001/api/reviews/REVIEW_ID \
 
 ---
 
+## Subscriptions (Phase 2 Week 15-16)
+
+### Get All Subscription Plans
+
+```bash
+curl http://localhost:3001/api/subscriptions/plans
+```
+
+**Available Plans:**
+- **Basic** (€29.99/month, €299.99/year):
+  - 5 questions per month
+  - 60 video minutes per month
+  - 5 document reviews per month
+  - 3 projects
+- **Professional** (€99.99/month, €999.99/year):
+  - 20 questions per month
+  - 300 video minutes per month
+  - 20 document reviews per month
+  - 10 projects
+  - Priority support
+  - Advanced analytics
+- **Business** (€299.99/month, €2999.99/year):
+  - Unlimited everything (-1 means unlimited)
+  - Priority support
+  - Advanced analytics
+  - Dedicated advisor
+  - Custom branding
+  - API access
+
+### Subscribe to a Plan
+
+```bash
+# Get access token first (login as client)
+curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.client@example.com",
+    "password": "client123"
+  }'
+
+# Subscribe to Professional plan (monthly)
+curl -X POST http://localhost:3001/api/subscriptions/subscribe \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "professional",
+    "billingPeriod": "MONTHLY",
+    "startTrial": false
+  }'
+
+# Subscribe to Business plan (annual) with trial
+curl -X POST http://localhost:3001/api/subscriptions/subscribe \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "business",
+    "billingPeriod": "ANNUAL",
+    "startTrial": true
+  }'
+```
+
+**Response includes:**
+- Subscription ID
+- Plan details (limits, features)
+- Billing period dates
+- Trial information (if applicable)
+- Stripe customer ID
+
+### Get My Subscription
+
+```bash
+curl http://localhost:3001/api/subscriptions/me \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response includes:**
+- Current subscription details
+- Plan information
+- Usage statistics for current month
+- Billing dates
+- Cancellation status
+
+### Get Usage Statistics
+
+```bash
+curl http://localhost:3001/api/subscriptions/usage \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Response example:**
+```json
+{
+  "hasSubscription": true,
+  "plan": {
+    "name": "Professional",
+    "slug": "professional"
+  },
+  "usage": {
+    "questionsUsed": 8,
+    "videoMinutesUsed": 120,
+    "documentReviewsUsed": 3
+  },
+  "limits": {
+    "questionsPerMonth": 20,
+    "videoMinutesPerMonth": 300,
+    "documentReviewsPerMonth": 20
+  },
+  "percentage": {
+    "questions": 40,
+    "videoMinutes": 40,
+    "documentReviews": 15
+  }
+}
+```
+
+### Upgrade/Downgrade Subscription
+
+```bash
+# Upgrade from Professional to Business
+curl -X PATCH http://localhost:3001/api/subscriptions/upgrade \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newPlanSlug": "business",
+    "billingPeriod": "MONTHLY"
+  }'
+
+# Downgrade from Business to Basic
+curl -X PATCH http://localhost:3001/api/subscriptions/upgrade \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newPlanSlug": "basic"
+  }'
+```
+
+**Note:** Upgrades are immediate, downgrades take effect at end of billing period
+
+### Cancel Subscription
+
+```bash
+# Cancel at end of billing period (default)
+curl -X POST http://localhost:3001/api/subscriptions/cancel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cancelAtPeriodEnd": true,
+    "reason": "No longer need the service"
+  }'
+
+# Cancel immediately
+curl -X POST http://localhost:3001/api/subscriptions/cancel \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cancelAtPeriodEnd": false,
+    "reason": "Found alternative solution"
+  }'
+```
+
+### Reactivate Cancelled Subscription
+
+```bash
+# If you cancelled but changed your mind (before period ends)
+curl -X POST http://localhost:3001/api/subscriptions/reactivate \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Only works if:**
+- Subscription was cancelled with `cancelAtPeriodEnd: true`
+- Current billing period hasn't ended yet
+- Subscription is still in ACTIVE or TRIALING status
+
+### Subscriptions Workflow Example
+
+**1. Client subscribes to Professional plan:**
+```bash
+# Login as client
+TOKEN=$(curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john.client@example.com", "password": "client123"}' | jq -r '.accessToken')
+
+# Subscribe to Professional (monthly)
+curl -X POST http://localhost:3001/api/subscriptions/subscribe \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "planSlug": "professional",
+    "billingPeriod": "MONTHLY",
+    "startTrial": false
+  }'
+```
+
+**2. Client checks their usage:**
+```bash
+curl http://localhost:3001/api/subscriptions/usage \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**3. Client approaches limit and upgrades:**
+```bash
+# Client has used 18 of 20 questions, decides to upgrade
+curl -X PATCH http://localhost:3001/api/subscriptions/upgrade \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "newPlanSlug": "business"
+  }'
+```
+
+**4. Later, client cancels:**
+```bash
+curl -X POST http://localhost:3001/api/subscriptions/cancel \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "cancelAtPeriodEnd": true,
+    "reason": "Project completed"
+  }'
+```
+
+### Usage Tracking
+
+**Automatic tracking happens when:**
+- Client posts a question → increments `questionsUsed`
+- Video call ends → increments `videoMinutesUsed` by call duration
+- Document reviewed → increments `documentReviewsUsed`
+
+**Monthly reset:**
+- Usage resets to 0 on the 1st of each month
+- Separate tracking records per month (YYYY-MM format)
+- Historical usage data is preserved
+
+**Limit enforcement:**
+- API returns 403 Forbidden when limit exceeded
+- Error message suggests upgrading plan
+- Unlimited plans (-1) never hit limits
+
+### Subscription Features
+
+**Trial Period:**
+- 14 days free trial available
+- Full access to plan features
+- No payment required during trial
+- Automatically converts to paid at trial end
+
+**Billing Periods:**
+- **MONTHLY**: Charged every month
+- **ANNUAL**: Charged yearly (discounted, ~17% savings)
+
+**Plan Features:**
+
+| Feature | Basic | Professional | Business |
+|---------|-------|--------------|----------|
+| Questions/month | 5 | 20 | Unlimited |
+| Video minutes/month | 60 | 300 | Unlimited |
+| Document reviews/month | 5 | 20 | Unlimited |
+| Max projects | 3 | 10 | Unlimited |
+| Priority support | ❌ | ✅ | ✅ |
+| Advanced analytics | ❌ | ✅ | ✅ |
+| Dedicated advisor | ❌ | ❌ | ✅ |
+| Custom branding | ❌ | ❌ | ✅ |
+| API access | ❌ | ❌ | ✅ |
+
+**Permissions:**
+- **Subscribe**: Any authenticated user
+- **View plans**: Public (no auth required)
+- **View usage**: Own subscription only
+- **Upgrade/Downgrade**: Own subscription only
+- **Cancel**: Own subscription only
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -1456,6 +1729,28 @@ All 8 weeks of Phase 1 implementation are now complete:
 - ✅ Month 1: Core platform (Auth, Users, Advisors, Q&A)
 - ✅ Month 2: Marketplace (Services, Orders, Payments, Messaging, Reviews)
 
+---
+
+✅ **Phase 2 Month 4 Week 15-16**:
+- Subscription plans system (Basic, Professional, Business)
+- Monthly and annual billing periods
+- 14-day free trial support
+- Usage tracking (questions, video minutes, document reviews)
+- Monthly usage limits with automatic enforcement
+- Upgrade/downgrade functionality
+- Subscription cancellation (immediate or at period end)
+- Subscription reactivation
+- Stripe customer creation
+- Usage statistics and percentage tracking
+- Three-tier pricing with feature flags
+
+---
+
+## Phase 2 Started! 🚀
+
+**Phase 2 Focus:** Core Platform Expansion
+- ✅ Weeks 15-16: Subscription Plans
+
 ## Next Steps
 
 **Future Features:**
@@ -1463,6 +1758,6 @@ All 8 weeks of Phase 1 implementation are now complete:
 - Password reset
 - File upload (avatars, documents)
 - Advisor verification workflow (admin)
-- Video call integration
-- Document workspace
-- Subscription plans
+- Video call integration (Phase 2 Weeks 17-18)
+- Document workspace (Phase 2 Weeks 19-20)
+- AI Features (Phase 2 Weeks 21-24)

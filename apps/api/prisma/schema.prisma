@@ -34,6 +34,7 @@ model User {
   conversationsStarted Conversation[] @relation("ConversationInitiator")
   conversationsReceived Conversation[] @relation("ConversationReceiver")
   messages             Message[]
+  subscriptions        Subscription[]
 
   @@index([email])
   @@index([role])
@@ -257,6 +258,100 @@ model Message {
   @@map("messages")
 }
 
+model SubscriptionPlan {
+  id                      String   @id @default(uuid())
+  name                    String   // "Basic", "Professional", "Business"
+  slug                    String   @unique // "basic", "pro", "business"
+  description             String?  @db.Text
+  price                   Decimal  @db.Decimal(10, 2) // monthly price
+  annualPrice             Decimal? @map("annual_price") @db.Decimal(10, 2) // annual price (discounted)
+  currency                String   @default("EUR")
+
+  // Feature limits
+  questionsPerMonth       Int      @map("questions_per_month") // -1 for unlimited
+  videoMinutesPerMonth    Int      @map("video_minutes_per_month") // -1 for unlimited
+  documentReviewsPerMonth Int      @map("document_reviews_per_month") // -1 for unlimited
+  maxProjects             Int      @map("max_projects") // -1 for unlimited
+
+  // Feature flags
+  prioritySupport         Boolean  @default(false) @map("priority_support")
+  advancedAnalytics       Boolean  @default(false) @map("advanced_analytics")
+  dedicatedAdvisor        Boolean  @default(false) @map("dedicated_advisor")
+  customBranding          Boolean  @default(false) @map("custom_branding")
+  apiAccess               Boolean  @default(false) @map("api_access")
+
+  active                  Boolean  @default(true)
+  sortOrder               Int      @default(0) @map("sort_order")
+  createdAt               DateTime @default(now()) @map("created_at")
+  updatedAt               DateTime @updatedAt @map("updated_at")
+
+  subscriptions           Subscription[]
+
+  @@index([active])
+  @@index([sortOrder])
+  @@map("subscription_plans")
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  userId               String             @map("user_id")
+  user                 User               @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId               String             @map("plan_id")
+  plan                 SubscriptionPlan   @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  status               SubscriptionStatus @default(ACTIVE)
+  billingPeriod        BillingPeriod      @default(MONTHLY) @map("billing_period")
+
+  // Stripe integration
+  stripeSubscriptionId String?            @unique @map("stripe_subscription_id")
+  stripeCustomerId     String?            @map("stripe_customer_id")
+  stripePriceId        String?            @map("stripe_price_id")
+
+  // Billing dates
+  currentPeriodStart   DateTime           @map("current_period_start")
+  currentPeriodEnd     DateTime           @map("current_period_end")
+  cancelAtPeriodEnd    Boolean            @default(false) @map("cancel_at_period_end")
+  cancelledAt          DateTime?          @map("cancelled_at")
+
+  // Trial
+  trialStart           DateTime?          @map("trial_start")
+  trialEnd             DateTime?          @map("trial_end")
+
+  createdAt            DateTime           @default(now()) @map("created_at")
+  updatedAt            DateTime           @updatedAt @map("updated_at")
+
+  usageTracking        UsageTracking[]
+
+  @@index([userId])
+  @@index([planId])
+  @@index([status])
+  @@index([stripeSubscriptionId])
+  @@map("subscriptions")
+}
+
+model UsageTracking {
+  id                  String       @id @default(uuid())
+  subscriptionId      String       @map("subscription_id")
+  subscription        Subscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  userId              String       @map("user_id")
+
+  // Tracking period
+  period              String       // "2025-01" (YYYY-MM format)
+
+  // Usage counters
+  questionsUsed       Int          @default(0) @map("questions_used")
+  videoMinutesUsed    Int          @default(0) @map("video_minutes_used")
+  documentReviewsUsed Int          @default(0) @map("document_reviews_used")
+
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
+
+  @@unique([subscriptionId, period])
+  @@index([userId])
+  @@index([period])
+  @@map("usage_tracking")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -340,4 +435,17 @@ enum PaymentStatus {
   SUCCEEDED
   FAILED
   REFUNDED
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  PAUSED
+  TRIALING
+}
+
+enum BillingPeriod {
+  MONTHLY
+  ANNUAL
 }
