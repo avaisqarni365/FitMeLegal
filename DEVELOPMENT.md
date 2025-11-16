@@ -2,54 +2,90 @@
 
 ## Prerequisites
 
-- Node.js 20+
-- Docker & Docker Compose
-- PostgreSQL client (optional, for direct DB access)
+- **Node.js 20+** - [Download](https://nodejs.org/)
+- **PostgreSQL 16+** - [Download](https://www.postgresql.org/download/)
+- **Git** - [Download](https://git-scm.com/)
+
+> **Note:** Redis is optional for MVP. We'll add it in later phases when needed for caching and real-time features.
 
 ## Quick Start
 
-### 1. Install Dependencies
+### 1. Install PostgreSQL
+
+If you don't have PostgreSQL installed locally:
+
+**macOS:**
+```bash
+brew install postgresql@16
+brew services start postgresql@16
+```
+
+**Windows:**
+Download from https://www.postgresql.org/download/windows/
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install postgresql postgresql-contrib
+sudo systemctl start postgresql
+```
+
+### 2. Create Database
 
 ```bash
+# Login to PostgreSQL (default user is usually 'postgres')
+psql -U postgres
+
+# In psql, create the database:
+CREATE DATABASE fitmelegal_dev;
+
+# Exit psql
+\q
+```
+
+### 3. Clone & Install Dependencies
+
+```bash
+# Clone the repository
+git clone <repository-url>
+cd FitMeLegal
+
+# Install all dependencies
 npm install
 ```
 
-### 2. Start Database Services
-
-```bash
-docker-compose up -d
-```
-
-This will start:
-- PostgreSQL on `localhost:5432`
-- Redis on `localhost:6379`
-
-### 3. Setup API Environment
+### 4. Configure Environment
 
 ```bash
 cd apps/api
 cp .env.example .env
 ```
 
-### 4. Run Database Migrations
+Edit `apps/api/.env` and update the DATABASE_URL with your PostgreSQL credentials:
+```
+DATABASE_URL="postgresql://postgres:YOUR_PASSWORD@localhost:5432/fitmelegal_dev?schema=public"
+```
+
+### 5. Setup Database Schema
 
 ```bash
-cd apps/api
+# From apps/api directory
 npm run prisma:generate
 npm run prisma:migrate
 ```
 
-### 5. Start Development Servers
+### 6. Start Development Server
 
 ```bash
 # From root directory
+cd ../..
 npm run dev
 ```
 
 This will start:
-- API: http://localhost:3001
-- API Docs: http://localhost:3001/api/docs
-- Web (when ready): http://localhost:3000
+- **API:** http://localhost:3001
+- **API Docs:** http://localhost:3001/api/docs
+- **Web (coming soon):** http://localhost:3000
 
 ## Useful Commands
 
@@ -88,21 +124,25 @@ npm run lint
 npm run format
 ```
 
-### Docker
+### PostgreSQL
 
 ```bash
-# Start services
-docker-compose up -d
+# Check PostgreSQL status
+# macOS
+brew services list
 
-# Stop services
-docker-compose down
+# Linux
+sudo systemctl status postgresql
 
-# View logs
-docker-compose logs -f
+# Connect to database
+psql -U postgres -d fitmelegal_dev
 
-# Reset database (WARNING: deletes all data)
-docker-compose down -v
-docker-compose up -d
+# List all databases
+psql -U postgres -c "\l"
+
+# Drop and recreate database (WARNING: deletes all data)
+psql -U postgres -c "DROP DATABASE fitmelegal_dev;"
+psql -U postgres -c "CREATE DATABASE fitmelegal_dev;"
 ```
 
 ## Project Structure
@@ -177,13 +217,20 @@ PORT=3002 npm run dev
 
 ```bash
 # Check if PostgreSQL is running
-docker-compose ps
+# macOS
+brew services list | grep postgresql
 
-# Restart database
-docker-compose restart postgres
+# Linux
+sudo systemctl status postgresql
 
-# Check logs
-docker-compose logs postgres
+# Windows - Check in Services app or:
+pg_ctl status
+
+# Test connection
+psql -U postgres -d fitmelegal_dev -c "SELECT version();"
+
+# If connection fails, check your DATABASE_URL in .env file
+# Make sure username, password, and database name are correct
 ```
 
 ### Prisma Issues

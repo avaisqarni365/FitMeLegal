@@ -1,3 +1,14 @@
+# OPTIONAL: Docker Compose for Local Development
+#
+# This file is OPTIONAL. You can use your local PostgreSQL installation instead.
+# Only use this if you prefer Docker over local services.
+#
+# To use Docker:
+#   docker-compose up -d
+#
+# To use local services:
+#   Install PostgreSQL locally and update apps/api/.env with your credentials
+
 version: '3.8'
 
 services:

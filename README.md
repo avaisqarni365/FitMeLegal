@@ -79,42 +79,44 @@ To democratize access to legal and tax advisory services globally through techno
 
 ### Prerequisites
 
-- Node.js 20+
-- PostgreSQL 16+
-- Redis 7+
-- Docker (optional)
+- **Node.js 20+** - [Download](https://nodejs.org/)
+- **PostgreSQL 16+** - [Download](https://www.postgresql.org/download/)
 
-### Installation
+> **Note:** All services run locally on your machine. No Docker required!
+
+### Quick Installation
 
 ```bash
-# Clone the repository
+# 1. Clone the repository
 git clone https://github.com/your-org/FitMeLegal.git
 cd FitMeLegal
 
-# Install dependencies
+# 2. Install dependencies
 npm install
 
-# Setup environment variables
-cp .env.example .env
-# Edit .env with your configuration
+# 3. Create PostgreSQL database
+psql -U postgres -c "CREATE DATABASE fitmelegal_dev;"
 
-# Start databases (using Docker)
-docker-compose up -d postgres redis
-
-# Run database migrations
+# 4. Setup environment
 cd apps/api
-npx prisma migrate dev
-npx prisma db seed
+cp .env.example .env
+# Edit .env and update DATABASE_URL with your PostgreSQL credentials
 
-# Start development servers
+# 5. Run database migrations
+npm run prisma:generate
+npm run prisma:migrate
+
+# 6. Start development server
 cd ../..
 npm run dev
 ```
 
 This will start:
 - **API:** http://localhost:3001
-- **Web App:** http://localhost:3000
-- **Admin Panel:** http://localhost:3002
+- **API Docs:** http://localhost:3001/api/docs
+- **Web App (coming soon):** http://localhost:3000
+
+📖 **For detailed setup instructions, see [DEVELOPMENT.md](./DEVELOPMENT.md)**
 
 ### API Documentation
 
