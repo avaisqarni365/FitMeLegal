@@ -15,6 +15,8 @@ import { MessagingModule } from './modules/messaging/messaging.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { SubscriptionsModule } from './modules/subscriptions/subscriptions.module';
 import { VideoMeetingsModule } from './modules/video-meetings/video-meetings.module';
+import { ProjectsModule } from './modules/projects/projects.module';
+import { DocumentsModule } from './modules/documents/documents.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -42,6 +44,8 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     ReviewsModule,
     SubscriptionsModule,
     VideoMeetingsModule,
+    ProjectsModule,
+    DocumentsModule,
   ],
   providers: [
     {

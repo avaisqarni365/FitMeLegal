@@ -37,6 +37,9 @@ model User {
   subscriptions        Subscription[]
   organizedMeetings    VideoMeeting[] @relation("MeetingOrganizer")
   attendedMeetings     VideoMeeting[] @relation("MeetingAttendee")
+  projects             Project[]
+  documents            Document[]
+  documentComments     DocumentComment[]
 
   @@index([email])
   @@index([role])
@@ -406,6 +409,112 @@ model VideoMeeting {
   @@index([status])
   @@index([orderId])
   @@map("video_meetings")
+}
+
+model Project {
+  id          String        @id @default(uuid())
+  ownerId     String        @map("owner_id")
+  owner       User          @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+
+  name        String
+  description String?       @db.Text
+
+  // Access control
+  members     Json          @default("[]") // Array of user IDs with access
+  isPublic    Boolean       @default(false) @map("is_public")
+
+  // Metadata
+  orderId     String?       @map("order_id") // Optional: project for an order
+  tags        Json          @default("[]")
+  archived    Boolean       @default(false)
+
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+
+  documents   Document[]
+
+  @@index([ownerId])
+  @@index([archived])
+  @@index([orderId])
+  @@map("projects")
+}
+
+model Document {
+  id              String            @id @default(uuid())
+  projectId       String            @map("project_id")
+  project         Project           @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploaderId      String            @map("uploader_id")
+  uploader        User              @relation(fields: [uploaderId], references: [id], onDelete: Cascade)
+
+  name            String
+  description     String?           @db.Text
+
+  // File details
+  fileUrl         String            @map("file_url") // S3 or storage URL
+  fileSize        Int               @map("file_size") // In bytes
+  mimeType        String            @map("mime_type")
+
+  // Version control
+  currentVersion  Int               @default(1) @map("current_version")
+
+  // Metadata
+  tags            Json              @default("[]")
+
+  createdAt       DateTime          @default(now()) @map("created_at")
+  updatedAt       DateTime          @updatedAt @map("updated_at")
+
+  versions        DocumentVersion[]
+  comments        DocumentComment[]
+
+  @@index([projectId])
+  @@index([uploaderId])
+  @@index([createdAt(sort: Desc)])
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id          String   @id @default(uuid())
+  documentId  String   @map("document_id")
+  document    Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  version     Int
+  fileUrl     String   @map("file_url")
+  fileSize    Int      @map("file_size")
+  changes     String?  @db.Text // Description of what changed
+
+  uploadedBy  String   @map("uploaded_by") // User ID
+  uploadedAt  DateTime @default(now()) @map("uploaded_at")
+
+  @@unique([documentId, version])
+  @@index([documentId])
+  @@map("document_versions")
+}
+
+model DocumentComment {
+  id         String   @id @default(uuid())
+  documentId String   @map("document_id")
+  document   Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  userId     String   @map("user_id")
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  content    String   @db.Text
+
+  // Annotation position (for PDF/image annotations)
+  page       Int?     // Page number (for PDFs)
+  positionX  Float?   @map("position_x") // X coordinate
+  positionY  Float?   @map("position_y") // Y coordinate
+
+  // Thread support
+  parentId   String?  @map("parent_id") // For replies
+
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@index([documentId])
+  @@index([userId])
+  @@index([parentId])
+  @@index([createdAt(sort: Desc)])
+  @@map("document_comments")
 }
 
 // Enums

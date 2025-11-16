@@ -1906,6 +1906,398 @@ curl -X POST http://localhost:3001/api/video-meetings/$MEETING_ID/end \
 
 ---
 
+## Document Workspace (Phase 2 Weeks 19-20)
+
+### Create a Project
+
+```bash
+# Get access token first
+TOKEN=$(curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john.client@example.com", "password": "client123"}' | jq -r '.accessToken')
+
+# Create a project workspace
+curl -X POST http://localhost:3001/api/projects \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q4 2024 Tax Documents",
+    "description": "Workspace for organizing tax-related documents for Q4 2024",
+    "members": [],
+    "isPublic": false,
+    "tags": ["tax", "Q4-2024"]
+  }'
+```
+
+**Response includes:**
+- Project ID
+- Owner information
+- Members array
+- Tags and metadata
+
+### Get My Projects
+
+```bash
+# Get all projects (owned or member of)
+curl http://localhost:3001/api/projects \
+  -H "Authorization: Bearer $TOKEN"
+
+# Include archived projects
+curl "http://localhost:3001/api/projects?includeArchived=true" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Get Project Details
+
+```bash
+curl http://localhost:3001/api/projects/PROJECT_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response includes:**
+- Project information
+- All documents in the project
+- Document uploader info
+- Document counts
+
+### Update Project
+
+```bash
+# Only owner can update
+curl -X PATCH http://localhost:3001/api/projects/PROJECT_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Q4 2024 Tax & Legal Documents",
+    "description": "Updated description",
+    "tags": ["tax", "legal", "Q4-2024"],
+    "archived": false
+  }'
+```
+
+### Add/Remove Project Members
+
+```bash
+# Add a member
+curl -X POST http://localhost:3001/api/projects/PROJECT_ID/members/USER_ID \
+  -H "Authorization: Bearer $TOKEN"
+
+# Remove a member
+curl -X DELETE http://localhost:3001/api/projects/PROJECT_ID/members/USER_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Only project owner can add/remove members**
+
+### Upload a Document
+
+```bash
+# Upload document to project
+curl -X POST http://localhost:3001/api/documents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "projectId": "project-uuid",
+    "name": "Contract_Draft_v1.pdf",
+    "description": "Initial draft of service agreement",
+    "fileUrl": "https://storage.fitmelegal.com/documents/abc123.pdf",
+    "fileSize": 245678,
+    "mimeType": "application/pdf",
+    "tags": ["contract", "legal", "draft"]
+  }'
+```
+
+**Note:** This endpoint expects the file to already be uploaded to storage (S3/etc). The `fileUrl` should point to the uploaded file.
+
+**Response includes:**
+- Document ID
+- Current version (starts at 1)
+- Uploader information
+- File metadata
+
+### Get Project Documents
+
+```bash
+curl http://localhost:3001/api/documents/project/PROJECT_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Returns:**
+- List of all documents in the project
+- Uploader info for each document
+- Comment count
+- Version count
+
+### Get Document Details
+
+```bash
+curl http://localhost:3001/api/documents/DOCUMENT_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response includes:**
+- Document information
+- All versions (ordered by version number desc)
+- Project information
+
+### Create New Document Version
+
+```bash
+# Upload a new version of a document
+curl -X POST http://localhost:3001/api/documents/DOCUMENT_ID/versions \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "https://storage.fitmelegal.com/documents/abc123_v2.pdf",
+    "fileSize": 248952,
+    "changes": "Updated payment terms in section 3.2"
+  }'
+```
+
+**What happens:**
+- Current version increments (1 → 2)
+- New version record created
+- Document fileUrl updated to new version
+- Changes are logged
+
+### Get Document Versions
+
+```bash
+curl http://localhost:3001/api/documents/DOCUMENT_ID/versions \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Returns:**
+- All versions of the document
+- Version numbers
+- File URLs for each version
+- Change descriptions
+- Upload timestamps and users
+
+### Add Comment/Annotation
+
+```bash
+# Add a general comment
+curl -X POST http://localhost:3001/api/documents/DOCUMENT_ID/comments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "This clause needs to be revised to include the new terms"
+  }'
+
+# Add a PDF annotation with position
+curl -X POST http://localhost:3001/api/documents/DOCUMENT_ID/comments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Update this section",
+    "page": 3,
+    "positionX": 150.5,
+    "positionY": 200.25
+  }'
+
+# Reply to a comment (threaded)
+curl -X POST http://localhost:3001/api/documents/DOCUMENT_ID/comments \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "I agree, let me update this",
+    "parentId": "comment-uuid"
+  }'
+```
+
+**Supports:**
+- General comments
+- PDF annotations (page + coordinates)
+- Threaded replies (parentId)
+- @mentions (future)
+
+### Get Document Comments
+
+```bash
+curl http://localhost:3001/api/documents/DOCUMENT_ID/comments \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Returns:**
+- All comments for the document
+- User information for each comment
+- Annotation positions (if any)
+- Parent/child relationships
+
+### Delete Document
+
+```bash
+# Only project owner or document uploader can delete
+curl -X DELETE http://localhost:3001/api/documents/DOCUMENT_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Delete Project
+
+```bash
+# Only project owner can delete (deletes all documents too!)
+curl -X DELETE http://localhost:3001/api/projects/PROJECT_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**⚠️ Warning:** Deleting a project deletes all documents and comments inside it!
+
+### Document Workspace Workflow Example
+
+**1. Client creates project and invites advisor:**
+```bash
+# Login as client
+CLIENT_TOKEN=$(curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john.client@example.com", "password": "client123"}' | jq -r '.accessToken')
+
+# Create project
+PROJECT=$(curl -X POST http://localhost:3001/api/projects \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Contract Review Project",
+    "description": "Review and finalize service agreement"
+  }')
+
+PROJECT_ID=$(echo $PROJECT | jq -r '.id')
+
+# Add advisor as member (get advisor user ID first)
+ADVISOR_USER_ID="advisor-uuid"
+curl -X POST http://localhost:3001/api/projects/$PROJECT_ID/members/$ADVISOR_USER_ID \
+  -H "Authorization: Bearer $CLIENT_TOKEN"
+```
+
+**2. Client uploads initial document:**
+```bash
+# Assume file already uploaded to S3 and got URL back
+curl -X POST http://localhost:3001/api/documents \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"projectId\": \"$PROJECT_ID\",
+    \"name\": \"Service_Agreement_Draft.pdf\",
+    \"fileUrl\": \"https://storage.fitmelegal.com/docs/contract123.pdf\",
+    \"fileSize\": 156789,
+    \"mimeType\": \"application/pdf\"
+  }"
+```
+
+**3. Advisor reviews and adds comments:**
+```bash
+# Login as advisor
+ADVISOR_TOKEN=$(curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "michael.lawyer@example.com", "password": "advisor123"}' | jq -r '.accessToken')
+
+# Add annotation on page 2
+curl -X POST http://localhost:3001/api/documents/$DOCUMENT_ID/comments \
+  -H "Authorization: Bearer $ADVISOR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "content": "Recommend changing payment terms to NET 30",
+    "page": 2,
+    "positionX": 100,
+    "positionY": 450
+  }'
+```
+
+**4. Client uploads revised version:**
+```bash
+curl -X POST http://localhost:3001/api/documents/$DOCUMENT_ID/versions \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fileUrl": "https://storage.fitmelegal.com/docs/contract123_v2.pdf",
+    "fileSize": 157234,
+    "changes": "Updated payment terms to NET 30 as suggested"
+  }'
+```
+
+**5. Both parties can view version history:**
+```bash
+curl http://localhost:3001/api/documents/$DOCUMENT_ID/versions \
+  -H "Authorization: Bearer $CLIENT_TOKEN"
+```
+
+### Document Workspace Features
+
+**Projects:**
+- Organize documents into workspaces
+- Add multiple members with access
+- Public or private visibility
+- Link to orders (optional)
+- Archive completed projects
+- Tag-based categorization
+
+**Documents:**
+- Upload any file type (PDF, Word, Excel, images, etc.)
+- Automatic version control
+- Track who uploaded each version
+- Store file size and MIME type
+- Tag documents for organization
+
+**Version Control:**
+- Automatic version numbering (1, 2, 3...)
+- Store all previous versions
+- Track changes with descriptions
+- Compare versions (future: visual diff)
+- Rollback to previous versions (future)
+
+**Comments & Annotations:**
+- Add comments to documents
+- PDF annotations with page + coordinates
+- Threaded replies (comment on comments)
+- @mention users (future)
+- Resolve comments (future)
+
+**Access Control:**
+- Project owner has full control
+- Members can view and comment
+- Public projects visible to all
+- Document uploader can delete their documents
+- Project owner can delete project and all documents
+
+**Integration:**
+- Link projects to orders
+- File upload to S3/storage (separate endpoint)
+- Real-time collaboration (future: WebSocket)
+- Activity feed (future)
+
+**Permissions:**
+- **Create Project**: Any authenticated user
+- **View Project**: Owner, members, or public
+- **Update Project**: Owner only
+- **Delete Project**: Owner only
+- **Add/Remove Members**: Owner only
+- **Upload Document**: Project members
+- **View Document**: Project members
+- **Create Version**: Project members
+- **Add Comment**: Project members
+- **Delete Document**: Owner or uploader
+
+### File Upload (Future)
+
+**Note:** Currently, the API expects files to be already uploaded to storage. A future endpoint will handle direct file uploads:
+
+```bash
+# Future: Direct file upload
+curl -X POST http://localhost:3001/api/documents/upload \
+  -H "Authorization: Bearer $TOKEN" \
+  -F "file=@/path/to/document.pdf" \
+  -F "projectId=project-uuid" \
+  -F "name=Contract_Draft.pdf"
+```
+
+This will:
+1. Upload file to S3/storage
+2. Generate secure URL
+3. Create document record
+4. Return document with fileUrl
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
