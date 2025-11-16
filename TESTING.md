@@ -66,6 +66,255 @@ The API uses structured logging for all operations. See `apps/api/MONITORING.md`
 
 ---
 
+## Performance Optimization & Caching
+
+The API implements comprehensive performance optimization and caching features.
+
+### Caching System
+
+The API uses an in-memory caching layer with TTL (Time To Live) support to improve response times and reduce database load.
+
+**Key Features:**
+- In-memory caching with automatic TTL management
+- Method-level caching with `@Cacheable` decorator
+- HTTP response caching with `@CacheResponse` decorator
+- Cache invalidation with `@CacheInvalidate` decorator
+- Pattern-based cache key deletion
+- Cache statistics and monitoring
+
+**Testing Cache Behavior:**
+
+```bash
+# First request - cache miss (slower)
+time curl http://localhost:3001/api/advisors
+
+# Second request - cache hit (faster)
+time curl http://localhost:3001/api/advisors
+
+# Clear cache and test again
+curl -X DELETE http://localhost:3001/api/cache/clear
+time curl http://localhost:3001/api/advisors
+```
+
+### Performance Monitoring
+
+The API automatically tracks and logs slow requests and database queries.
+
+**Performance Thresholds:**
+- **Slow Request**: > 1 second (warning logged)
+- **Very Slow Request**: > 5 seconds (error logged)
+- **Slow Query**: > 100ms (warning logged)
+- **Very Slow Query**: > 1 second (error logged)
+
+**Monitoring Slow Operations:**
+
+```bash
+# Check logs for performance warnings
+tail -f apps/api/logs/app.log | grep -E '(Slow|Performance)'
+
+# Or in development mode, watch console output for warnings
+npm run start:dev
+```
+
+**Performance Metrics:**
+
+```bash
+# Get system metrics including cache stats
+curl http://localhost:3001/health/metrics
+
+# Example response:
+# {
+#   "cache": {
+#     "size": 42,
+#     "hitRate": 0.85
+#   },
+#   "memory": { ... },
+#   "uptime": 3600
+# }
+```
+
+### Query Optimization
+
+The API includes Prisma middleware that monitors database query performance and provides optimization suggestions.
+
+**Best Practices:**
+- Use `select` to fetch only needed fields
+- Implement pagination for large datasets
+- Use `include` judiciously to avoid N+1 queries
+- Add database indexes on frequently queried fields
+- Use batch operations instead of loops
+
+**Example: Optimized vs Unoptimized Query**
+
+```typescript
+// Unoptimized - fetches all fields, no pagination
+const users = await prisma.user.findMany();
+
+// Optimized - select specific fields, paginated
+const users = await prisma.user.findMany({
+  select: {
+    id: true,
+    email: true,
+    firstName: true,
+    lastName: true
+  },
+  skip: (page - 1) * limit,
+  take: limit
+});
+```
+
+### Cache Testing Examples
+
+**1. Test Method-Level Caching:**
+
+```typescript
+// Service with @Cacheable decorator
+@Injectable()
+export class UsersService {
+  @Cacheable({ key: 'user', ttl: 300 })
+  async getUser(id: string) {
+    return this.prisma.user.findUnique({ where: { id } });
+  }
+}
+
+// First call: Database query executed
+// Second call within 5 minutes: Returned from cache
+```
+
+**2. Test Cache Invalidation:**
+
+```typescript
+// Update operation invalidates cache
+@CacheInvalidate({ keys: ['user', 'users'] })
+async updateUser(id: string, data: UpdateUserDto) {
+  return this.prisma.user.update({ where: { id }, data });
+}
+
+// After update, next getUser() call will fetch fresh data
+```
+
+**3. Test HTTP Response Caching:**
+
+```bash
+# First request - cache miss
+curl -i http://localhost:3001/api/advisors/123
+# Response time: ~100ms
+
+# Second request within TTL - cache hit
+curl -i http://localhost:3001/api/advisors/123
+# Response time: ~5ms
+# Check X-Cache header: HIT
+```
+
+### Performance Testing
+
+**Load Testing with Artillery:**
+
+```bash
+# Install artillery
+npm install -g artillery
+
+# Create artillery config
+cat > load-test.yml << EOF
+config:
+  target: 'http://localhost:3001'
+  phases:
+    - duration: 60
+      arrivalRate: 10
+scenarios:
+  - flow:
+    - get:
+        url: "/api/advisors"
+    - get:
+        url: "/api/services"
+EOF
+
+# Run load test
+artillery run load-test.yml
+```
+
+**Benchmark Results:**
+
+Expected performance improvements with caching:
+- **Cache Hit**: 1-5ms response time
+- **Cache Miss**: 50-200ms (database query)
+- **Uncached Endpoint**: 100-500ms
+
+### Cache Management
+
+**Manual Cache Operations:**
+
+```typescript
+// In your service or controller
+constructor(private cacheService: CacheService) {}
+
+// Get cache stats
+const stats = await this.cacheService.getStats();
+// { size: 42, keys: [...], hitRate: 0.85 }
+
+// Clear all cache
+await this.cacheService.clear();
+
+// Delete specific key
+await this.cacheService.del('user:123');
+
+// Delete pattern
+await this.cacheService.delPattern('users:*');
+
+// Check if key exists
+const exists = await this.cacheService.has('user:123');
+```
+
+### Troubleshooting Performance Issues
+
+**1. High Response Times:**
+
+```bash
+# Check for slow requests in logs
+grep "Slow request" apps/api/logs/app.log
+
+# Check database query performance
+grep "Slow database query" apps/api/logs/app.log
+```
+
+**2. Low Cache Hit Rate:**
+
+```bash
+# Get cache statistics
+curl http://localhost:3001/health/metrics | jq '.cache'
+
+# If hit rate < 0.5, consider:
+# - Increasing TTL values
+# - Caching more endpoints
+# - Checking cache key generation
+```
+
+**3. Memory Issues:**
+
+```bash
+# Monitor memory usage
+curl http://localhost:3001/health/metrics | jq '.memory'
+
+# If memory high, consider:
+# - Reducing cache TTL
+# - Clearing cache more frequently
+# - Avoiding caching large objects
+```
+
+### Documentation
+
+See `apps/api/PERFORMANCE.md` for comprehensive documentation on:
+
+- CacheService API and usage examples
+- Cache decorators (`@Cacheable`, `@CacheInvalidate`)
+- HTTP response caching with `@CacheResponse`
+- Performance monitoring and thresholds
+- Database query optimization techniques
+- Best practices and troubleshooting
+- Migration path to Redis for distributed caching
+
+---
+
 ## Manual API Testing
 
 This section provides curl examples for manually testing API endpoints.

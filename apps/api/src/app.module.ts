@@ -1,12 +1,14 @@
 import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD, APP_FILTER } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
 import { LoggerModule } from './common/logger/logger.module';
 import { AuditModule } from './common/audit/audit.module';
+import { CacheModule } from './common/cache/cache.module';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { PerformanceInterceptor } from './common/interceptors/performance.interceptor';
 import { LoggerService } from './common/logger/logger.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
@@ -49,6 +51,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     PrismaModule,
     LoggerModule,
     AuditModule,
+    CacheModule,
     HealthModule,
     AuthModule,
     UsersModule,
@@ -82,6 +85,11 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     {
       provide: APP_FILTER,
       useFactory: (logger: LoggerService) => new AllExceptionsFilter(logger),
+      inject: [LoggerService],
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useFactory: (logger: LoggerService) => new PerformanceInterceptor(logger),
       inject: [LoggerService],
     },
   ],
