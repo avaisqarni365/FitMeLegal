@@ -34,6 +34,36 @@ npm test -- notifications.service.spec.ts
 
 See `apps/api/TESTING_GUIDE.md` for detailed information on writing and running tests.
 
+## Monitoring & Health Checks
+
+The API includes comprehensive monitoring and observability features.
+
+### Health Check Endpoints
+
+```bash
+# Basic health check
+curl http://localhost:3001/health
+
+# Readiness check (includes database connectivity)
+curl http://localhost:3001/health/ready
+
+# Liveness check
+curl http://localhost:3001/health/live
+
+# System metrics
+curl http://localhost:3001/health/metrics
+```
+
+### Logging
+
+The API uses structured logging for all operations. See `apps/api/MONITORING.md` for detailed information on:
+
+- Logging system and log levels
+- Health check configuration
+- Audit logging for administrative actions
+- Error tracking and monitoring
+- Production monitoring best practices
+
 ---
 
 ## Manual API Testing

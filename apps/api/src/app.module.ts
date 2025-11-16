@@ -1,8 +1,13 @@
-import { Module } from '@nestjs/common';
+import { Module, MiddlewareConsumer, NestModule } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { PrismaModule } from './prisma/prisma.module';
+import { LoggerModule } from './common/logger/logger.module';
+import { AuditModule } from './common/audit/audit.module';
+import { LoggerMiddleware } from './common/middleware/logger.middleware';
+import { AllExceptionsFilter } from './common/filters/http-exception.filter';
+import { LoggerService } from './common/logger/logger.service';
 import { AuthModule } from './modules/auth/auth.module';
 import { UsersModule } from './modules/users/users.module';
 import { AdvisorsModule } from './modules/advisors/advisors.module';
@@ -26,6 +31,7 @@ import { EmailModule } from './modules/email/email.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SearchModule } from './modules/search/search.module';
+import { HealthModule } from './modules/health/health.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -41,6 +47,9 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
       },
     ]),
     PrismaModule,
+    LoggerModule,
+    AuditModule,
+    HealthModule,
     AuthModule,
     UsersModule,
     AdvisorsModule,
@@ -70,6 +79,15 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
       provide: APP_GUARD,
       useClass: JwtAuthGuard,
     },
+    {
+      provide: APP_FILTER,
+      useFactory: (logger: LoggerService) => new AllExceptionsFilter(logger),
+      inject: [LoggerService],
+    },
   ],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(LoggerMiddleware).forRoutes('*');
+  }
+}
