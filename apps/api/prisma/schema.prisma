@@ -49,6 +49,7 @@ model User {
   fileUploads          FileUpload[]
   notifications        Notification[]
   notificationPreferences NotificationPreferences?
+  searchHistory        SearchHistory[]
 
   @@index([email])
   @@index([role])
@@ -840,6 +841,52 @@ model NotificationPreferences {
   @@map("notification_preferences")
 }
 
+model SearchHistory {
+  id          String       @id @default(uuid())
+  userId      String       @map("user_id")
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Search details
+  query       String
+  searchType  SearchType   @map("search_type") // ADVISOR, SERVICE, QUESTION, etc.
+  filters     Json?        // Applied filters (category, location, price, etc.)
+  resultsCount Int         @default(0) @map("results_count")
+
+  // Click tracking
+  clicked     Boolean      @default(false)
+  clickedId   String?      @map("clicked_id") // ID of clicked result
+  clickedType String?      @map("clicked_type") // Type of clicked result
+
+  createdAt   DateTime     @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([query])
+  @@index([searchType])
+  @@index([createdAt(sort: Desc)])
+  @@map("search_history")
+}
+
+model PopularSearch {
+  id          String     @id @default(uuid())
+
+  // Search term
+  query       String     @unique
+  searchType  SearchType @default(ALL) @map("search_type")
+
+  // Analytics
+  searchCount Int        @default(1) @map("search_count")
+  clickCount  Int        @default(0) @map("click_count")
+  lastSearched DateTime  @default(now()) @map("last_searched")
+
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  @@index([searchCount(sort: Desc)])
+  @@index([query])
+  @@index([searchType])
+  @@map("popular_searches")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -1145,4 +1192,12 @@ enum NotificationPriority {
   INFO
   WARNING
   URGENT
+}
+
+enum SearchType {
+  ALL
+  ADVISOR
+  SERVICE
+  QUESTION
+  TEMPLATE
 }

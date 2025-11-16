@@ -4369,12 +4369,441 @@ function useNotifications(accessToken: string) {
 
 ---
 
+## Advanced Search & Filtering System (Phase 3 Week 4)
+
+The Search System provides comprehensive full-text search across advisors, services, questions, and templates with advanced filtering and analytics.
+
+### Basic Search
+
+#### Search All Content
+
+```bash
+# Simple search
+curl -X GET "http://localhost:3001/api/search?q=tax+attorney" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Search all (public endpoint)
+curl -X GET "http://localhost:3001/api/search?q=contract+law"
+```
+
+Response:
+```json
+{
+  "query": "tax attorney",
+  "type": "ALL",
+  "results": {
+    "advisors": {
+      "items": [...],
+      "total": 5
+    },
+    "services": {
+      "items": [...],
+      "total": 12
+    },
+    "questions": {
+      "items": [...],
+      "total": 8
+    },
+    "templates": {
+      "items": [...],
+      "total": 3
+    }
+  },
+  "facets": {
+    "advisors": 5,
+    "services": 12,
+    "questions": 8,
+    "templates": 3,
+    "total": 28
+  },
+  "pagination": {
+    "page": 1,
+    "limit": 20
+  }
+}
+```
+
+### Search by Type
+
+#### Search Advisors Only
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=lawyer&type=ADVISOR&page=1&limit=10" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Search Services Only
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=consultation&type=SERVICE" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Search Questions Only
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=employment&type=QUESTION" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Search Templates Only
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=contract&type=TEMPLATE" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### Advanced Filtering
+
+#### Filter by Category
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=advice&type=SERVICE&category=Business+Law" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Filter by Location
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=attorney&type=ADVISOR&location=Berlin" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Filter by Price Range
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=consultation&type=SERVICE&minPrice=50&maxPrice=200" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Filter by Rating
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=lawyer&type=ADVISOR&minRating=4.5" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Filter Verified Advisors
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=tax&type=ADVISOR&verified=true" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+#### Combined Filters
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=business+law&type=ADVISOR&location=Munich&minRating=4.0&verified=true" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### Sorting Options
+
+#### Sort by Relevance (Default)
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=lawyer&sortBy=RELEVANCE"
+```
+
+#### Sort by Rating
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=lawyer&type=ADVISOR&sortBy=RATING"
+```
+
+#### Sort by Price (Low to High)
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=service&type=SERVICE&sortBy=PRICE_LOW"
+```
+
+#### Sort by Price (High to Low)
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=service&type=SERVICE&sortBy=PRICE_HIGH"
+```
+
+#### Sort by Recent
+
+```bash
+curl -X GET "http://localhost:3001/api/search?q=question&type=QUESTION&sortBy=RECENT"
+```
+
+### Search Suggestions & Autocomplete
+
+#### Get Search Suggestions
+
+```bash
+# Autocomplete as user types
+curl -X GET "http://localhost:3001/api/search/suggestions?q=tax"
+```
+
+Response:
+```json
+[
+  {
+    "query": "tax attorney",
+    "searchType": "ADVISOR",
+    "searchCount": 45
+  },
+  {
+    "query": "tax consultation",
+    "searchType": "SERVICE",
+    "searchCount": 32
+  },
+  {
+    "query": "tax deduction",
+    "searchType": "QUESTION",
+    "searchCount": 18
+  }
+]
+```
+
+#### Get Popular Searches
+
+```bash
+curl -X GET "http://localhost:3001/api/search/popular?limit=10"
+```
+
+Response:
+```json
+[
+  {
+    "query": "employment law",
+    "searchType": "ALL",
+    "searchCount": 234
+  },
+  {
+    "query": "business contract",
+    "searchType": "SERVICE",
+    "searchCount": 189
+  },
+  {
+    "query": "family lawyer",
+    "searchType": "ADVISOR",
+    "searchCount": 156
+  }
+]
+```
+
+### Search History
+
+#### Get My Search History
+
+```bash
+curl -X GET "http://localhost:3001/api/search/history?limit=20" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+[
+  {
+    "id": "hist_123",
+    "userId": "user_123",
+    "query": "tax attorney",
+    "searchType": "ADVISOR",
+    "filters": {
+      "location": "Berlin",
+      "minRating": 4.5
+    },
+    "resultsCount": 5,
+    "clicked": true,
+    "clickedId": "advisor_456",
+    "clickedType": "ADVISOR",
+    "createdAt": "2025-11-16T10:00:00Z"
+  }
+]
+```
+
+#### Clear Search History
+
+```bash
+curl -X DELETE "http://localhost:3001/api/search/history" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+### Click Tracking
+
+Track when users click on search results for analytics:
+
+```bash
+curl -X POST "http://localhost:3001/api/search/track-click" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "searchHistoryId": "hist_123",
+    "clickedId": "advisor_456",
+    "clickedType": "ADVISOR"
+  }'
+```
+
+### Search Types
+
+The system supports searching across:
+
+- **ALL** - Search all content types
+- **ADVISOR** - Search advisors only
+- **SERVICE** - Search services only
+- **QUESTION** - Search questions only
+- **TEMPLATE** - Search document templates only
+
+### Searchable Fields
+
+**Advisors:**
+- First name, Last name
+- Bio/description
+- Specialization/expertise
+- Location
+- Tags
+
+**Services:**
+- Title
+- Description
+- Category
+- Tags
+- Advisor information
+
+**Questions:**
+- Title
+- Description
+- Category
+- Tags
+
+**Templates:**
+- Title
+- Description
+- Category
+- Tags
+
+### Filter Options
+
+**Available Filters:**
+- `category` - Filter by category
+- `specialty` - Filter by specialty (advisors)
+- `location` - Filter by location (advisors)
+- `minPrice` - Minimum price (services)
+- `maxPrice` - Maximum price (services)
+- `minRating` - Minimum rating
+- `verified` - Verified advisors only (boolean)
+
+### Faceted Search Results
+
+Search results include facet counts showing how many results exist in each category:
+
+```json
+{
+  "facets": {
+    "advisors": 15,
+    "services": 42,
+    "questions": 28,
+    "templates": 8,
+    "total": 93
+  }
+}
+```
+
+This allows users to see result distribution and filter by type.
+
+### Frontend Integration
+
+#### React Search Component Example
+
+```typescript
+function SearchBar() {
+  const [query, setQuery] = useState('');
+  const [suggestions, setSuggestions] = useState([]);
+  const [results, setResults] = useState(null);
+
+  // Autocomplete
+  useEffect(() => {
+    if (query.length >= 2) {
+      fetch(`/api/search/suggestions?q=${query}`)
+        .then(res => res.json())
+        .then(setSuggestions);
+    }
+  }, [query]);
+
+  // Search
+  const handleSearch = async () => {
+    const res = await fetch(`/api/search?q=${query}&type=ALL`);
+    const data = await res.json();
+    setResults(data);
+  };
+
+  return (
+    <div>
+      <input
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search advisors, services..."
+      />
+      {suggestions.length > 0 && (
+        <SuggestionsList suggestions={suggestions} />
+      )}
+      <button onClick={handleSearch}>Search</button>
+      {results && <SearchResults results={results} />}
+    </div>
+  );
+}
+```
+
+### Performance Considerations
+
+**Current Implementation:**
+- Database full-text search using Prisma
+- Case-insensitive contains queries
+- Indexed columns for fast lookups
+- Pagination for large result sets
+
+**Production Optimization:**
+- **Elasticsearch** integration for advanced full-text search
+- **Redis** caching for popular searches
+- **Database indexes** on searchable columns
+- **Query result caching** for common searches
+
+### Analytics Tracked
+
+The system tracks:
+- **Search queries** - What users search for
+- **Search counts** - How often terms are searched
+- **Click-through rates** - Which results users click
+- **Filter usage** - Which filters are most used
+- **Search-to-action** - Conversion from search to order/contact
+
+### Features
+
+- **Full-text Search:** Search across multiple entity types
+- **Advanced Filtering:** Category, location, price, rating, verification
+- **Autocomplete:** Real-time search suggestions
+- **Popular Searches:** Trending search terms
+- **Search History:** Personal search history tracking
+- **Click Tracking:** Analytics on search result clicks
+- **Faceted Results:** Result counts per category
+- **Multiple Sort Options:** Relevance, rating, price, recency
+- **Pagination:** Efficient loading of large result sets
+- **Public Access:** Search available to non-logged-in users
+
+### Future Enhancements
+
+- **Elasticsearch Integration:** Advanced full-text search with scoring
+- **Semantic Search:** AI-powered search understanding
+- **Search Filters UI:** Faceted search sidebar
+- **Search Analytics Dashboard:** Admin insights into search behavior
+- **Saved Searches:** Save and receive alerts for search queries
+- **Voice Search:** Speech-to-text search input
+- **Image Search:** Find advisors/services by image
+- **Geolocation Search:** "Near me" searches
+- **Advanced Boolean:** AND, OR, NOT operators
+- **Fuzzy Matching:** Typo tolerance
+
+---
+
 ## Next Steps
 
 **Future Features:**
 - Email verification & password reset
 - Real-time collaboration on documents
-- Advanced search across platform
 - Mobile app development
 - White-label solutions
 - API for third-party integrations
