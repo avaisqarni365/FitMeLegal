@@ -23,6 +23,7 @@ import { DocumentDrafterModule } from './modules/document-drafter/document-draft
 import { AdminModule } from './modules/admin/admin.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { EmailModule } from './modules/email/email.module';
+import { UploadModule } from './modules/upload/upload.module';
 import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
 
 @Module({
@@ -58,6 +59,7 @@ import { JwtAuthGuard } from './modules/auth/guards/jwt-auth.guard';
     AdminModule,
     AnalyticsModule,
     EmailModule,
+    UploadModule,
   ],
   providers: [
     {

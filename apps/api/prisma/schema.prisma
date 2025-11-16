@@ -46,6 +46,7 @@ model User {
   adminLogs            AuditLog[]
   emailPreferences     EmailPreferences?
   emailLogs            EmailLog[]
+  fileUploads          FileUpload[]
 
   @@index([email])
   @@index([role])
@@ -722,6 +723,59 @@ model EmailLog {
   @@map("email_logs")
 }
 
+model FileUpload {
+  id            String       @id @default(uuid())
+  userId        String       @map("user_id")
+  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // File information
+  originalName  String       @map("original_name")
+  fileName      String       @map("file_name") // Stored filename (sanitized + UUID)
+  fileSize      Int          @map("file_size") // In bytes
+  mimeType      String       @map("mime_type")
+  fileExtension String       @map("file_extension")
+
+  // Storage
+  storageProvider String     @map("storage_provider") // "s3", "local", "cloudinary"
+  storagePath     String     @map("storage_path") // Full path or S3 key
+  storageUrl      String     @map("storage_url") // Public or signed URL
+  bucket          String?    // S3 bucket name
+
+  // File categorization
+  category      FileCategory // avatar, document, attachment, etc.
+  entityType    String?      @map("entity_type") // "Order", "Service", "Question", etc.
+  entityId      String?      @map("entity_id")
+
+  // Image metadata (if applicable)
+  width         Int?
+  height        Int?
+  isImage       Boolean      @default(false) @map("is_image")
+
+  // Security
+  isPublic      Boolean      @default(false) @map("is_public")
+  accessToken   String?      @map("access_token") // For private file access
+  expiresAt     DateTime?    @map("expires_at") // For temporary URLs
+
+  // Processing status
+  status        FileStatus   @default(PENDING)
+  processedAt   DateTime?    @map("processed_at")
+  errorMessage  String?      @map("error_message") @db.Text
+
+  // Virus scan (future)
+  virusScanned  Boolean      @default(false) @map("virus_scanned")
+  virusSafe     Boolean?     @map("virus_safe")
+
+  createdAt     DateTime     @default(now()) @map("created_at")
+  updatedAt     DateTime     @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([category])
+  @@index([entityType, entityId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("file_uploads")
+}
+
 // Enums
 enum UserRole {
   CLIENT
@@ -943,5 +997,24 @@ enum EmailStatus {
   OPENED
   CLICKED
   BOUNCED
+  FAILED
+}
+
+enum FileCategory {
+  AVATAR
+  DOCUMENT
+  ATTACHMENT
+  ADVISOR_VERIFICATION
+  SERVICE_IMAGE
+  ORDER_DELIVERABLE
+  CONTRACT
+  TEMPLATE
+  OTHER
+}
+
+enum FileStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
   FAILED
 }

@@ -3776,11 +3776,319 @@ All templates use responsive HTML with inline CSS for maximum compatibility.
 
 ---
 
+## File Upload System (Phase 3 Week 2)
+
+The File Upload system provides secure file storage with multi-provider support (local, S3, Cloudinary) and comprehensive metadata tracking.
+
+### Upload File
+
+#### Upload Any File
+
+```bash
+curl -X POST http://localhost:3001/api/upload/file?category=DOCUMENT \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -F "file=@/path/to/document.pdf"
+```
+
+With optional entity association:
+```bash
+curl -X POST "http://localhost:3001/api/upload/file?category=ORDER_DELIVERABLE&entityType=Order&entityId=order_123" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -F "file=@/path/to/deliverable.pdf"
+```
+
+Response:
+```json
+{
+  "id": "file_abc123",
+  "userId": "user_123",
+  "originalName": "document.pdf",
+  "fileName": "uuid-generated-name.pdf",
+  "fileSize": 245678,
+  "mimeType": "application/pdf",
+  "fileExtension": "pdf",
+  "storageProvider": "local",
+  "storagePath": "/uploads/documents/2025/11/uuid-generated-name.pdf",
+  "storageUrl": "http://localhost:3001/uploads/documents/2025/11/uuid-generated-name.pdf",
+  "category": "DOCUMENT",
+  "entityType": "Order",
+  "entityId": "order_123",
+  "isImage": false,
+  "isPublic": false,
+  "status": "COMPLETED",
+  "virusScanned": false,
+  "createdAt": "2025-11-16T10:00:00Z"
+}
+```
+
+#### Upload/Update Avatar
+
+```bash
+curl -X POST http://localhost:3001/api/upload/avatar \
+  -H "Authorization: Bearer $ACCESS_TOKEN" \
+  -F "file=@/path/to/profile.jpg"
+```
+
+Response includes image metadata (width, height) for images:
+```json
+{
+  "id": "file_avatar123",
+  "userId": "user_123",
+  "originalName": "profile.jpg",
+  "fileName": "uuid-avatar.jpg",
+  "fileSize": 125678,
+  "mimeType": "image/jpeg",
+  "fileExtension": "jpg",
+  "storageProvider": "local",
+  "storagePath": "/uploads/avatars/2025/11/uuid-avatar.jpg",
+  "storageUrl": "http://localhost:3001/uploads/avatars/2025/11/uuid-avatar.jpg",
+  "category": "AVATAR",
+  "width": 800,
+  "height": 800,
+  "isImage": true,
+  "isPublic": true,
+  "status": "COMPLETED",
+  "createdAt": "2025-11-16T10:00:00Z"
+}
+```
+
+### Get Files
+
+#### Get My Uploaded Files
+
+```bash
+# All files
+curl -X GET http://localhost:3001/api/upload/my-files \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+
+# Filter by category
+curl -X GET "http://localhost:3001/api/upload/my-files?category=DOCUMENT" \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+[
+  {
+    "id": "file_123",
+    "originalName": "contract.pdf",
+    "fileName": "uuid-contract.pdf",
+    "fileSize": 245678,
+    "mimeType": "application/pdf",
+    "category": "DOCUMENT",
+    "storageUrl": "http://localhost:3001/uploads/...",
+    "createdAt": "2025-11-16T10:00:00Z"
+  }
+]
+```
+
+#### Get File by ID
+
+```bash
+curl -X GET http://localhost:3001/api/upload/file_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Access control is enforced - users can only access their own files unless the file is marked as public.
+
+#### Get Storage Statistics
+
+```bash
+curl -X GET http://localhost:3001/api/upload/stats \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Response:
+```json
+{
+  "totalFiles": 15,
+  "totalSize": 5242880,
+  "totalSizeMB": 5.0,
+  "byCategory": {
+    "AVATAR": { "count": 1, "size": 125678 },
+    "DOCUMENT": { "count": 10, "size": 4500000 },
+    "ATTACHMENT": { "count": 4, "size": 617202 }
+  }
+}
+```
+
+### Delete File
+
+```bash
+curl -X DELETE http://localhost:3001/api/upload/file_123 \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+
+Deletes both the file record and the actual file from storage.
+
+### File Categories
+
+The system supports the following file categories:
+
+- **AVATAR** - User profile pictures
+- **DOCUMENT** - General documents (contracts, PDFs, etc.)
+- **ATTACHMENT** - Email or message attachments
+- **ADVISOR_VERIFICATION** - Advisor credential documents
+- **SERVICE_IMAGE** - Service offering images
+- **ORDER_DELIVERABLE** - Files delivered as part of orders
+- **CONTRACT** - Legal contracts
+- **TEMPLATE** - Document templates
+- **OTHER** - Miscellaneous files
+
+### Security Features
+
+**File Validation:**
+- Maximum file size: 10MB (configurable)
+- MIME type whitelist (documents, images, archives)
+- Filename sanitization (prevents path traversal attacks)
+- Extension validation
+
+**Access Control:**
+- User ownership verification
+- Public/private file access
+- Optional access tokens for temporary sharing
+- Expiration timestamps for time-limited access
+
+**Supported File Types:**
+- Documents: PDF, DOC, DOCX, XLS, XLSX, PPT, PPTX, TXT, RTF
+- Images: JPG, JPEG, PNG, GIF, SVG, WEBP
+- Archives: ZIP, RAR
+- Other: CSV
+
+### Storage Providers
+
+#### Local Storage (Current)
+
+Files stored in `/uploads` directory with organized structure:
+```
+/uploads
+  /avatars/2025/11/
+  /documents/2025/11/
+  /attachments/2025/11/
+  ...
+```
+
+#### AWS S3 Integration (Ready)
+
+To enable S3 storage, add environment variables:
+
+```env
+AWS_ACCESS_KEY_ID=your_access_key
+AWS_SECRET_ACCESS_KEY=your_secret_key
+AWS_REGION=eu-central-1
+AWS_S3_BUCKET=fitmelegal-files
+STORAGE_PROVIDER=s3
+```
+
+Install AWS SDK:
+```bash
+npm install @aws-sdk/client-s3
+```
+
+The service is already structured to support S3 - just uncomment and configure the S3 upload method in `upload.service.ts`.
+
+#### Cloudinary Integration (Future)
+
+For image-heavy workloads, Cloudinary can be integrated:
+```bash
+npm install cloudinary
+```
+
+### File Metadata
+
+Each uploaded file includes comprehensive metadata:
+
+- **File Info:** Original name, generated filename, size, MIME type, extension
+- **Storage:** Provider, path, URL, bucket (for cloud storage)
+- **Categorization:** Category, entity type, entity ID (for associations)
+- **Image Data:** Width, height, isImage flag
+- **Access Control:** isPublic, accessToken, expiresAt
+- **Processing:** Status (PENDING, PROCESSING, COMPLETED, FAILED)
+- **Security:** virusScanned, virusSafe flags
+- **Timestamps:** createdAt, updatedAt, processedAt
+
+### Integration Examples
+
+#### Upload Order Deliverable
+
+```bash
+# When advisor completes an order
+curl -X POST "http://localhost:3001/api/upload/file?category=ORDER_DELIVERABLE&entityType=Order&entityId=order_456" \
+  -H "Authorization: Bearer $ADVISOR_TOKEN" \
+  -F "file=@/path/to/legal-opinion.pdf"
+```
+
+#### Upload Advisor Verification
+
+```bash
+# During advisor application
+curl -X POST "http://localhost:3001/api/upload/file?category=ADVISOR_VERIFICATION&entityType=Advisor&entityId=advisor_789" \
+  -H "Authorization: Bearer $ADVISOR_TOKEN" \
+  -F "file=@/path/to/bar-certificate.pdf"
+```
+
+#### Upload Service Image
+
+```bash
+# When creating a service offering
+curl -X POST "http://localhost:3001/api/upload/file?category=SERVICE_IMAGE&entityType=Service&entityId=service_321" \
+  -H "Authorization: Bearer $ADVISOR_TOKEN" \
+  -F "file=@/path/to/service-thumbnail.jpg"
+```
+
+### Error Handling
+
+**Common Errors:**
+
+```json
+// No file provided
+{
+  "statusCode": 400,
+  "message": "No file provided"
+}
+
+// File too large
+{
+  "statusCode": 400,
+  "message": "File size exceeds maximum allowed size of 10MB"
+}
+
+// Invalid file type
+{
+  "statusCode": 400,
+  "message": "File type not allowed: application/exe"
+}
+
+// File not found
+{
+  "statusCode": 404,
+  "message": "File not found"
+}
+
+// Access denied
+{
+  "statusCode": 403,
+  "message": "You do not have permission to access this file"
+}
+```
+
+### Future Enhancements
+
+- **Virus Scanning:** Integrate ClamAV or cloud-based scanning
+- **Image Processing:** Automatic thumbnails, resizing, optimization
+- **CDN Integration:** CloudFront or similar for faster delivery
+- **Direct Upload:** Pre-signed URLs for client-side uploads
+- **Batch Operations:** Upload/delete multiple files
+- **File Versioning:** Keep historical versions of documents
+- **Compression:** Automatic compression for large files
+- **Preview Generation:** PDF thumbnails, document previews
+
+---
+
 ## Next Steps
 
 **Future Features:**
 - Email verification & password reset
-- File upload integration (S3/storage)
 - Real-time collaboration on documents
 - Advanced search across platform
 - Push notifications
