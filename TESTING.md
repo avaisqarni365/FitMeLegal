@@ -1641,6 +1641,271 @@ curl -X POST http://localhost:3001/api/subscriptions/cancel \
 
 ---
 
+## Video Meetings (Phase 2 Weeks 17-18)
+
+### Schedule a Video Meeting
+
+```bash
+# Get access token first (login)
+TOKEN=$(curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john.client@example.com", "password": "client123"}' | jq -r '.accessToken')
+
+# Schedule a meeting with an advisor
+curl -X POST http://localhost:3001/api/video-meetings \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "attendeeId": "advisor-user-id",
+    "title": "Tax Consultation Q4 2024",
+    "description": "Discuss tax optimization strategies",
+    "scheduledStart": "2024-12-15T14:00:00Z",
+    "scheduledEnd": "2024-12-15T15:00:00Z",
+    "timezone": "Europe/Berlin",
+    "recordingEnabled": true
+  }'
+```
+
+**Response includes:**
+- Meeting ID
+- Room URL (e.g., `https://meet.fitmelegal.com/abc123...`)
+- Room ID for video provider
+- Scheduled times
+- Participant details
+
+### Get My Meetings
+
+```bash
+# Get all meetings (organized and attending)
+curl http://localhost:3001/api/video-meetings \
+  -H "Authorization: Bearer $TOKEN"
+
+# Filter by status
+curl "http://localhost:3001/api/video-meetings?status=SCHEDULED" \
+  -H "Authorization: Bearer $TOKEN"
+
+# Paginate
+curl "http://localhost:3001/api/video-meetings?page=1&limit=10" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Available statuses:**
+- `SCHEDULED` - Meeting is scheduled
+- `IN_PROGRESS` - Meeting is currently active
+- `COMPLETED` - Meeting has ended
+- `CANCELLED` - Meeting was cancelled
+- `NO_SHOW` - Participant didn't join
+
+### Get Upcoming Meetings
+
+```bash
+# Get next 10 upcoming scheduled meetings
+curl http://localhost:3001/api/video-meetings/upcoming \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Get Meeting Details
+
+```bash
+curl http://localhost:3001/api/video-meetings/MEETING_ID \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### Update a Meeting
+
+```bash
+# Only the organizer can update (reschedule)
+curl -X PATCH http://localhost:3001/api/video-meetings/MEETING_ID \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "title": "Rescheduled: Tax Consultation",
+    "scheduledStart": "2024-12-16T14:00:00Z",
+    "scheduledEnd": "2024-12-16T15:00:00Z",
+    "notes": "Moved to Tuesday due to conflict"
+  }'
+```
+
+**Note:** Can only update SCHEDULED meetings
+
+### Join a Meeting
+
+```bash
+# Start the meeting session
+curl -X POST http://localhost:3001/api/video-meetings/MEETING_ID/join \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+```json
+{
+  "meetingId": "meeting-uuid",
+  "roomUrl": "https://meet.fitmelegal.com/abc123def456...",
+  "roomId": "abc123def456...",
+  "recordingEnabled": true,
+  "message": "You can now join the meeting"
+}
+```
+
+**What happens:**
+- Meeting status changes to `IN_PROGRESS`
+- `actualStart` timestamp is recorded
+- Both participants can join using the room URL
+
+### End a Meeting
+
+```bash
+# Complete the meeting
+curl -X POST http://localhost:3001/api/video-meetings/MEETING_ID/end \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+**Response:**
+```json
+{
+  "id": "meeting-uuid",
+  "status": "COMPLETED",
+  "durationMinutes": 47,
+  "actualStart": "2024-12-15T14:02:00Z",
+  "actualEnd": "2024-12-15T14:49:00Z",
+  "message": "Meeting completed. Duration: 47 minutes"
+}
+```
+
+**What happens:**
+- Meeting status changes to `COMPLETED`
+- `actualEnd` timestamp is recorded
+- Duration in minutes is calculated
+- Video minutes are tracked for usage limits
+
+### Cancel a Meeting
+
+```bash
+# Cancel with reason
+curl -X POST http://localhost:3001/api/video-meetings/MEETING_ID/cancel \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "reason": "Schedule conflict - need to reschedule"
+  }'
+```
+
+**Either participant can cancel**
+**Cannot cancel completed meetings**
+
+### Video Meetings Workflow Example
+
+**1. Client schedules a meeting with advisor:**
+```bash
+# Login as client
+CLIENT_TOKEN=$(curl -X POST http://localhost:3001/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "john.client@example.com", "password": "client123"}' | jq -r '.accessToken')
+
+# Get advisor ID (from advisors listing)
+ADVISOR_ID=$(curl http://localhost:3001/api/advisors \
+  -H "Authorization: Bearer $CLIENT_TOKEN" | jq -r '.data[0].id')
+
+# Schedule meeting
+MEETING=$(curl -X POST http://localhost:3001/api/video-meetings \
+  -H "Authorization: Bearer $CLIENT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{
+    \"attendeeId\": \"$ADVISOR_ID\",
+    \"title\": \"Legal Consultation\",
+    \"scheduledStart\": \"2024-12-20T10:00:00Z\",
+    \"scheduledEnd\": \"2024-12-20T11:00:00Z\"
+  }")
+
+MEETING_ID=$(echo $MEETING | jq -r '.id')
+```
+
+**2. Both participants check upcoming meetings:**
+```bash
+# Client checks
+curl http://localhost:3001/api/video-meetings/upcoming \
+  -H "Authorization: Bearer $CLIENT_TOKEN"
+
+# Advisor checks (after logging in)
+curl http://localhost:3001/api/video-meetings/upcoming \
+  -H "Authorization: Bearer $ADVISOR_TOKEN"
+```
+
+**3. At meeting time, both join:**
+```bash
+# Client joins
+CLIENT_ROOM=$(curl -X POST http://localhost:3001/api/video-meetings/$MEETING_ID/join \
+  -H "Authorization: Bearer $CLIENT_TOKEN")
+
+# Advisor joins
+ADVISOR_ROOM=$(curl -X POST http://localhost:3001/api/video-meetings/$MEETING_ID/join \
+  -H "Authorization: Bearer $ADVISOR_TOKEN")
+
+# Both get the same room URL to connect
+```
+
+**4. After meeting, either participant ends it:**
+```bash
+curl -X POST http://localhost:3001/api/video-meetings/$MEETING_ID/end \
+  -H "Authorization: Bearer $CLIENT_TOKEN"
+```
+
+### Meeting Features
+
+**Scheduling:**
+- Schedule with any user on the platform
+- Set title, description, and timezone
+- Prevent scheduling in the past
+- Prevent self-meetings
+- Optional recording
+
+**Session Management:**
+- Automatic status transitions (SCHEDULED → IN_PROGRESS → COMPLETED)
+- Track actual start/end times
+- Calculate duration in minutes
+- Both participants get same room URL
+
+**Recording (Future):**
+- Enable/disable per meeting
+- Recording status tracking (PENDING → PROCESSING → READY → FAILED)
+- Store recording URL
+- Transcription support (Whisper API)
+
+**Integration:**
+- Link meetings to orders
+- Track video minutes for subscription usage limits
+- Calendar integration (future: Google Calendar, Outlook, iCal)
+
+**Permissions:**
+- **Schedule**: Any authenticated user
+- **View**: Only meeting participants
+- **Update**: Only meeting organizer
+- **Join**: Both participants
+- **End**: Both participants
+- **Cancel**: Both participants
+
+### Video Provider Integration
+
+**Current Implementation:**
+- Generates unique room ID for each meeting
+- Placeholder room URLs (`https://meet.fitmelegal.com/...`)
+- Ready to integrate with:
+  - **Daily.co**: Video API with React SDK
+  - **Agora**: Real-time video communication
+  - **Twilio Video**: Enterprise-grade video
+  - **Jitsi**: Open-source video conferencing
+
+**Future Features:**
+- Pre-call lobby (test camera/mic)
+- Screen sharing
+- In-call chat
+- Recording controls
+- Meeting transcripts
+- AI-generated summaries
+- Post-call action items
+
+---
+
 ## Common Issues
 
 ### "Unauthorized" Error
@@ -1744,12 +2009,29 @@ All 8 weeks of Phase 1 implementation are now complete:
 - Usage statistics and percentage tracking
 - Three-tier pricing with feature flags
 
+✅ **Phase 2 Month 5 Week 17-18**:
+- Video meeting scheduling system
+- Meeting status lifecycle (SCHEDULED → IN_PROGRESS → COMPLETED)
+- Unique room generation for each meeting
+- Join/end meeting functionality
+- Duration tracking and calculation
+- Recording support (enabled/disabled)
+- Meeting cancellation with reason
+- Update/reschedule meetings (organizer only)
+- Upcoming meetings view
+- Filter meetings by status
+- Prevent past scheduling and self-meetings
+- Timezone support
+- Order-linked meetings (optional)
+- Transcription support (future)
+
 ---
 
-## Phase 2 Started! 🚀
+## Phase 2 Progress! 🚀
 
 **Phase 2 Focus:** Core Platform Expansion
 - ✅ Weeks 15-16: Subscription Plans
+- ✅ Weeks 17-18: Video Call Integration
 
 ## Next Steps
 
@@ -1758,6 +2040,5 @@ All 8 weeks of Phase 1 implementation are now complete:
 - Password reset
 - File upload (avatars, documents)
 - Advisor verification workflow (admin)
-- Video call integration (Phase 2 Weeks 17-18)
 - Document workspace (Phase 2 Weeks 19-20)
 - AI Features (Phase 2 Weeks 21-24)
